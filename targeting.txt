@@ -1,0 +1,44 @@
+original item: the item to which the clone is a clone
+
+Inter-board target:
+If the clone's center is above the targeted item's center, the insertion point should be equal to the sort order of the item being targeted, and all items equal to or greater than that sort order (the insertion point) will increase by 1, including the item being targeted
+If the clone's center is below the targeted item's center, the insertion point is one more than the sort order of the item being targeted, and all items equal to or greater than that sort order (the insertion point) will increase by 1.
+
+Intra-board target:
+It's the same as inter-board targeting except that if the insertion point is the same as the original item's sort order, nothing happens
+
+## Implementation Summary
+
+**Insertion Point Calculation:**
+- Inter-board: Use targeted item's current sort order directly
+  - Above center: insertionPoint = targetSortOrder
+  - Below center: insertionPoint = targetSortOrder + 1
+- Intra-board: Must adjust for dragged item removal first
+  - If targeting item after dragged item: adjustedTargetSortOrder = targetSortOrder - 1
+  - If targeting item before dragged item: adjustedTargetSortOrder = targetSortOrder
+  - Above center: insertionPoint = adjustedTargetSortOrder  
+  - Below center: insertionPoint = adjustedTargetSortOrder + 1
+
+**No-Op Detection:**
+- Intra-board only: insertionPoint === currentSortOrder → nothing happens
+
+**Item Position Adjustments:**
+
+*Inter-board moves (Todo → Done or Done → Todo):*
+- Source board: Items after dragged item shift down by 1 (positions decrease)
+- Target board: Items at insertion point and after shift up by 1 (positions increase)
+
+*Intra-board moves - Forward (moving towards position 1):*
+- Items between insertion point and dragged item's original position shift down by 1
+- All other items remain unchanged
+- Example: Move item 3 to position 1 → items 1,2 become 2,3
+
+*Intra-board moves - Backward (moving towards higher positions):*
+- Items after dragged item's original position first shift down by 1 due to removal
+- Then items at final insertion point and after shift up by 1 due to insertion
+- Example: Move item 1 to position 3 → item 2 becomes 1, item 3 becomes 2, then items at position 3+ shift up
+
+*Intra-board no-op cases:*
+- When calculated insertion point equals dragged item's current position
+- No position changes occur for any items
+- Example: Move item 2 above item 2's center → insertion point = 2 = current position → no-op

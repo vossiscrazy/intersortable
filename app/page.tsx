@@ -26,7 +26,7 @@ export default function Home() {
                 </div>
                 <div className="relative">
                   <span className="absolute -top-4 left-0 text-xs text-neutral-400 bg-neutral-800 px-1">ITEMS CONTAINER</span>
-                  <div className="space-y-2 border border-neutral-600 p-2">
+                  <div className="space-y-2 border border-neutral-600 p-2" data-board="todo">
                     <div className="relative">
                       <span className="absolute -top-4 left-0 text-xs text-neutral-400 bg-neutral-700 px-1">ITEM</span>
                       <div className="bg-neutral-700 rounded p-3 text-neutral-100 border border-neutral-500 flex justify-between items-center" data-sortable-item="todo-1">
@@ -63,7 +63,7 @@ export default function Home() {
                 </div>
                 <div className="relative">
                   <span className="absolute -top-4 left-0 text-xs text-neutral-400 bg-neutral-800 px-1">ITEMS CONTAINER</span>
-                  <div className="space-y-2 border border-neutral-600 p-2">
+                  <div className="space-y-2 border border-neutral-600 p-2" data-board="done">
                     <div className="relative">
                       <span className="absolute -top-4 left-0 text-xs text-neutral-400 bg-neutral-700 px-1">ITEM</span>
                       <div className="bg-neutral-700 rounded p-3 text-neutral-300 line-through border border-neutral-500 flex justify-between items-center" data-sortable-item="done-1">

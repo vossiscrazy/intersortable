@@ -22,6 +22,9 @@ let debugInfo = {
 
 let targetingMarkers: HTMLElement[] = []
 let draggedItemCenter = { x: 0, y: 0 }
+let sortOrderLabels: HTMLElement[] = []
+let targetedItem: HTMLElement | null = null
+let insertionPosition: 'above' | 'below' = 'above'
 
 // Debug state updater
 function updateDebug() {
@@ -76,16 +79,39 @@ function createTargetingMarkers() {
     }
   })
   
-  // Update debug info
+  // Update debug info and targeting state
   debugInfo.nearestItemId = nearestItem ? nearestItem.getAttribute('data-sortable-item') : null
   debugInfo.nearestDistance = nearestDistance
   debugInfo.markersCreated = 0
+  targetedItem = nearestItem
   
-  // Second pass: create markers for all items
-  allItems.forEach(item => {
+  // Calculate insertion position based on dragged item center vs nearest item center
+  if (nearestItem) {
+    // If the target is the original item, keep it in the same position
+    if (nearestItem === draggedElement) {
+      const targetBoard = nearestItem.closest('[data-board]') as HTMLElement
+      const targetBoardItems = targetBoard ? Array.from(targetBoard.querySelectorAll('[data-sortable-item]')) : []
+      const currentPosition = targetBoardItems.indexOf(nearestItem)
+      // Keep insertion at current position (no change)
+      insertionPosition = 'above' // This will maintain current position
+    } else {
+      const targetRect = nearestItem.getBoundingClientRect()
+      const targetCenterY = targetRect.top + targetRect.height / 2
+      insertionPosition = draggedItemCenter.y <= targetCenterY ? 'above' : 'below'
+    }
+  }
+  
+  // Second pass: create markers for all items  
+  allItems.forEach((item, globalIndex) => {
     const rect = item.getBoundingClientRect()
     const centerX = rect.left + rect.width / 2
     const centerY = rect.top + rect.height / 2
+    
+    // Find the board this item belongs to and its position within that board
+    const board = item.closest('[data-board]') as HTMLElement
+    const boardName = board ? board.getAttribute('data-board') : 'unknown'
+    const itemsInBoard = board ? Array.from(board.querySelectorAll('[data-sortable-item]')) : []
+    const positionInBoard = itemsInBoard.indexOf(item) + 1
     
     // Skip if this is the cloned element's position (distance would be 0)
     const distance = Math.sqrt(
@@ -168,7 +194,7 @@ function createTargetingMarkers() {
       label.style.border = '2px solid rgba(255, 170, 0, 0.5)'
       label.textContent = `TARGET: ${Math.round(distance)}px`
     } else {
-      // Regular items keep cyan styling
+      // Regular items keep cyan styling with distance
       label.style.color = '#00ffff'
       label.style.textShadow = '0 0 8px rgba(0, 255, 255, 0.8), 0 0 4px rgba(0, 255, 255, 0.6)'
       label.style.border = '1px solid rgba(0, 255, 255, 0.3)'
@@ -245,6 +271,260 @@ function createTargetingMarkers() {
     document.body.appendChild(coordLabel)
     targetingMarkers.push(draggedMarker, coordLabel)
   }
+  
+  // Create cyberpunk sort order labels
+  createSortOrderLabels()
+}
+
+// Create cyberpunk sort order labels for all items
+function createSortOrderLabels() {
+  clearSortOrderLabels()
+  
+  if (!targetedItem) return
+  
+  // Find target board and calculate new sort orders using 1-based positions
+  const targetBoard = targetedItem.closest('[data-board]') as HTMLElement
+  const targetBoardName = targetBoard ? targetBoard.getAttribute('data-board') : 'unknown'
+  const targetBoardItems = targetBoard ? Array.from(targetBoard.querySelectorAll('[data-sortable-item]')) as HTMLElement[] : []
+  const targetSortOrder = targetBoardItems.indexOf(targetedItem) + 1 // Convert to 1-based
+  
+  // Get dragged item's current position
+  const draggedBoard = draggedElement?.closest('[data-board]') as HTMLElement
+  const draggedBoardItems = draggedBoard ? Array.from(draggedBoard.querySelectorAll('[data-sortable-item]')) : []
+  const currentSortOrder = draggedBoardItems.indexOf(draggedElement!) + 1 // Convert to 1-based
+  
+  // Check for intra-board moves
+  const isIntraBoard = (draggedBoard === targetBoard)
+  
+  // Calculate insertion point based on your specification
+  let insertionPoint: number
+  
+  if (isIntraBoard) {
+    // For intra-board moves, adjust targeted item's position for the removal of dragged item
+    if (targetSortOrder > currentSortOrder) {
+      // Targeting an item that comes after the dragged item
+      const adjustedTargetSortOrder = targetSortOrder - 1
+      insertionPoint = insertionPosition === 'above' ? adjustedTargetSortOrder : adjustedTargetSortOrder + 1
+    } else {
+      // Targeting an item that comes before the dragged item
+      insertionPoint = insertionPosition === 'above' ? targetSortOrder : targetSortOrder + 1
+    }
+  } else {
+    // For inter-board moves, use targeted item's current position
+    insertionPoint = insertionPosition === 'above' ? targetSortOrder : targetSortOrder + 1
+  }
+  
+  // Check for intra-board no-op: if insertion point equals original sort order, nothing happens
+  const isNoOp = isIntraBoard && insertionPoint === currentSortOrder
+  
+  // Show insertion indicator only when not a no-op
+  if (targetedItem && !isNoOp) {
+    const rect = targetedItem.getBoundingClientRect()
+    const insertY = insertionPosition === 'above' ? rect.top - 10 : rect.bottom + 5
+    
+    const insertionLabel = document.createElement('div')
+    insertionLabel.style.position = 'fixed'
+    insertionLabel.style.left = (rect.right + 10) + 'px'
+    insertionLabel.style.top = insertY + 'px'
+    insertionLabel.style.color = '#ff0066'
+    insertionLabel.style.fontSize = '12px'
+    insertionLabel.style.fontFamily = 'monospace'
+    insertionLabel.style.fontWeight = 'bold'
+    insertionLabel.style.zIndex = '10003'
+    insertionLabel.style.pointerEvents = 'none'
+    insertionLabel.style.textShadow = '0 0 15px rgba(255, 0, 102, 1), 0 0 8px rgba(255, 0, 102, 0.8)'
+    insertionLabel.style.backgroundColor = 'rgba(0, 0, 0, 0.9)'
+    insertionLabel.style.padding = '3px 8px'
+    insertionLabel.style.borderRadius = '8px'
+    insertionLabel.style.border = '2px solid rgba(255, 0, 102, 0.8)'
+    insertionLabel.style.backdropFilter = 'blur(6px)'
+    insertionLabel.style.animation = 'insertionPulse 1s ease-in-out infinite'
+    
+    insertionLabel.textContent = `>>> ${targetBoardName.toUpperCase()}: ${insertionPoint} <<<`
+    
+    document.body.appendChild(insertionLabel)
+    sortOrderLabels.push(insertionLabel)
+  }
+  
+  // If it's a no-op, show current positions without any changes
+  if (isNoOp) {
+    const allBoards = document.querySelectorAll('[data-board]') as NodeListOf<HTMLElement>
+    
+    allBoards.forEach(board => {
+      const boardName = board.getAttribute('data-board') || 'unknown'
+      const items = Array.from(board.querySelectorAll('[data-sortable-item]')) as HTMLElement[]
+      
+      items.forEach((item, index) => {
+        // Skip the dragged element for display
+        if (item === draggedElement) return
+        
+        const currentPosition = index + 1
+        
+        // Create position label for this item
+        const rect = item.getBoundingClientRect()
+        const label = document.createElement('div')
+        label.style.position = 'fixed'
+        label.style.left = (rect.left - 80) + 'px'
+        label.style.top = (rect.top - 8) + 'px'
+        label.style.color = item === targetedItem ? '#ffaa00' : '#00ffaa'
+        label.style.fontSize = '12px'
+        label.style.fontFamily = 'monospace'
+        label.style.fontWeight = 'bold'
+        label.style.zIndex = '10002'
+        label.style.pointerEvents = 'none'
+        label.style.textShadow = item === targetedItem 
+          ? '0 0 12px rgba(255, 170, 0, 1), 0 0 6px rgba(255, 170, 0, 0.8)'
+          : '0 0 8px rgba(0, 255, 170, 0.8), 0 0 4px rgba(0, 255, 170, 0.6)'
+        label.style.backgroundColor = 'rgba(0, 0, 0, 0.8)'
+        label.style.padding = '2px 8px'
+        label.style.borderRadius = '6px'
+        label.style.border = item === targetedItem 
+          ? '2px solid rgba(255, 170, 0, 0.6)'
+          : '1px solid rgba(0, 255, 170, 0.4)'
+        label.style.backdropFilter = 'blur(4px)'
+        label.textContent = `${boardName.toUpperCase()}: ${currentPosition}`
+        
+        document.body.appendChild(label)
+        sortOrderLabels.push(label)
+      })
+    })
+    return
+  }
+  
+  // Calculate new positions based on your specification
+  const allBoards = document.querySelectorAll('[data-board]') as NodeListOf<HTMLElement>
+  
+  allBoards.forEach(board => {
+    const boardName = board.getAttribute('data-board') || 'unknown'
+    const items = Array.from(board.querySelectorAll('[data-sortable-item]')) as HTMLElement[]
+    
+    items.forEach((item, index) => {
+      // Skip the dragged element for display
+      if (item === draggedElement) return
+      
+      let newPosition = index + 1 // Current position (1-based)
+      
+      // Apply position shifting logic based on your specification
+      if (board === targetBoard && board === draggedBoard) {
+        // Intra-board: item is being moved within the same board
+        const draggedCurrentPosition = currentSortOrder
+        
+        // For intra-board moves, calculate final position directly
+        if (insertionPoint < draggedCurrentPosition) {
+          // Moving item forward (towards position 1)
+          // Items between insertion point and dragged position shift down by 1
+          if (newPosition >= insertionPoint && newPosition < draggedCurrentPosition) {
+            newPosition += 1
+          }
+        } else if (insertionPoint > draggedCurrentPosition) {
+          // Moving item backward (towards higher positions)
+          // Items after dragged position shift down by 1 due to removal
+          if (newPosition > draggedCurrentPosition) {
+            const adjustedPosition = newPosition - 1 // Position after removal
+            // Only items at or after the insertion point shift up
+            if (adjustedPosition >= insertionPoint) {
+              newPosition = adjustedPosition + 1
+            } else {
+              newPosition = adjustedPosition
+            }
+          }
+        }
+        // If insertionPoint === draggedCurrentPosition, it's a no-op (already handled above)
+        
+      } else if (board === targetBoard) {
+        // Inter-board target board: items at insertion point and after shift up by 1
+        if (newPosition >= insertionPoint) {
+          newPosition += 1
+        }
+      } else if (board === draggedBoard) {
+        // Inter-board source board: items after dragged item shift down by 1
+        const draggedCurrentPosition = draggedBoardItems.indexOf(draggedElement) + 1
+        if (newPosition > draggedCurrentPosition) {
+          newPosition -= 1
+        }
+      }
+      
+      // Create position label for this item
+      const rect = item.getBoundingClientRect()
+      const label = document.createElement('div')
+      label.style.position = 'fixed'
+      label.style.left = (rect.left - 80) + 'px'
+      label.style.top = (rect.top - 8) + 'px'
+      label.style.color = item === targetedItem ? '#ffaa00' : '#00ffaa'
+      label.style.fontSize = '12px'
+      label.style.fontFamily = 'monospace'
+      label.style.fontWeight = 'bold'
+      label.style.zIndex = '10002'
+      label.style.pointerEvents = 'none'
+      label.style.textShadow = item === targetedItem 
+        ? '0 0 12px rgba(255, 170, 0, 1), 0 0 6px rgba(255, 170, 0, 0.8)'
+        : '0 0 8px rgba(0, 255, 170, 0.8), 0 0 4px rgba(0, 255, 170, 0.6)'
+      label.style.backgroundColor = 'rgba(0, 0, 0, 0.8)'
+      label.style.padding = '2px 8px'
+      label.style.borderRadius = '6px'
+      label.style.border = item === targetedItem 
+        ? '2px solid rgba(255, 170, 0, 0.6)'
+        : '1px solid rgba(0, 255, 170, 0.4)'
+      label.style.backdropFilter = 'blur(4px)'
+      label.textContent = `${boardName.toUpperCase()}: ${newPosition}`
+      
+      document.body.appendChild(label)
+      sortOrderLabels.push(label)
+    })
+  })
+}
+
+// Create insertion position label
+function createInsertionLabel(nearItem: HTMLElement, boardName: string, position: number) {
+  const rect = nearItem.getBoundingClientRect()
+  const insertY = insertionPosition === 'above' ? rect.top - 10 : rect.bottom + 5
+  
+  const label = document.createElement('div')
+  label.style.position = 'fixed'
+  label.style.left = (rect.right + 10) + 'px'
+  label.style.top = insertY + 'px'
+  label.style.color = '#ff0066'
+  label.style.fontSize = '12px'
+  label.style.fontFamily = 'monospace'
+  label.style.fontWeight = 'bold'
+  label.style.zIndex = '10003'
+  label.style.pointerEvents = 'none'
+  label.style.textShadow = '0 0 15px rgba(255, 0, 102, 1), 0 0 8px rgba(255, 0, 102, 0.8)'
+  label.style.backgroundColor = 'rgba(0, 0, 0, 0.9)'
+  label.style.padding = '3px 8px'
+  label.style.borderRadius = '8px'
+  label.style.border = '2px solid rgba(255, 0, 102, 0.8)'
+  label.style.backdropFilter = 'blur(6px)'
+  label.style.animation = 'insertionPulse 1s ease-in-out infinite'
+  label.textContent = `>>> ${boardName}: ${position} <<<`
+  
+  // Add insertion animation
+  const style = document.createElement('style')
+  style.textContent = `
+    @keyframes insertionPulse {
+      0% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  `
+  document.head.appendChild(style)
+  
+  document.body.appendChild(label)
+  sortOrderLabels.push(label, style)
+}
+
+// Clear sort order labels
+function clearSortOrderLabels() {
+  sortOrderLabels.forEach(label => {
+    try {
+      if (label.parentNode) {
+        label.parentNode.removeChild(label)
+      }
+    } catch (e) {
+      // Ignore if already removed
+    }
+  })
+  sortOrderLabels = []
 }
 
 // Clear all targeting markers
@@ -259,6 +539,7 @@ function clearTargetingMarkers() {
     }
   })
   targetingMarkers = []
+  clearSortOrderLabels()
 }
 
 export function initSortable() {
