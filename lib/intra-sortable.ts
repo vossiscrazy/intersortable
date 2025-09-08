@@ -71,8 +71,6 @@ function createTargetingMarkers() {
       Math.pow(centerY - draggedItemCenter.y, 2)
     )
     
-    if (distance < 5) return // Skip items too close (likely the clone position)
-    
     if (distance < nearestDistance) {
       nearestDistance = distance
       nearestItem = item
@@ -113,13 +111,10 @@ function createTargetingMarkers() {
     const itemsInBoard = board ? Array.from(board.querySelectorAll('[data-sortable-item]')) : []
     const positionInBoard = itemsInBoard.indexOf(item) + 1
     
-    // Skip if this is the cloned element's position (distance would be 0)
     const distance = Math.sqrt(
       Math.pow(centerX - draggedItemCenter.x, 2) + 
       Math.pow(centerY - draggedItemCenter.y, 2)
     )
-    
-    if (distance < 5) return // Skip items too close (likely the clone position)
     
     // Check if this is the nearest item for special styling
     const isNearest = item === nearestItem
@@ -573,6 +568,8 @@ function handleMouseDown(e: MouseEvent) {
       
       // Create clone
       clonedElement = item.cloneNode(true) as HTMLElement
+      // Remove data-sortable-item attribute so clone won't be targeted
+      clonedElement.removeAttribute('data-sortable-item')
       clonedElement.style.position = 'fixed'
       clonedElement.style.pointerEvents = 'none'
       clonedElement.style.zIndex = '9999'
