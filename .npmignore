@@ -10,6 +10,7 @@ next.config.js
 postcss.config.mjs
 tailwind.config.ts
 tsconfig.json
+tsconfig.lib.json
 eslint.config.js
 eslint.config.mjs
 

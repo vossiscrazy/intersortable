@@ -126,7 +126,7 @@ export default function Home() {
                 <h4 className="text-[#ebdbb2] text-xl font-semibold mb-4">The Facts Speak for Themselves</h4>
                 <div className="grid md:grid-cols-3 gap-6 text-center">
                   <div>
-                    <div className="text-[#d79921] text-3xl font-bold">~5kb</div>
+                    <div className="text-[#d79921] text-3xl font-bold">5.7kb</div>
                     <div className="text-[#bdae93] text-sm">Minified bundle size</div>
                   </div>
                   <div>

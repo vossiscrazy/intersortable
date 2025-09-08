@@ -14,14 +14,15 @@
   "license": "MIT",
   "author": "Austin Voss",
   "type": "module",
-  "main": "./lib/intersortable.ts",
-  "module": "./lib/intersortable.ts",
-  "types": "./lib/intersortable.ts",
+  "main": "./dist/intersortable.min.js",
+  "module": "./dist/intersortable.min.js",
+  "types": "./dist/intersortable.d.ts",
   "exports": {
     ".": {
-      "types": "./lib/intersortable.ts",
-      "import": "./lib/intersortable.ts",
-      "default": "./lib/intersortable.ts"
+      "types": "./dist/intersortable.d.ts",
+      "import": "./dist/intersortable.min.js",
+      "require": "./dist/intersortable.min.js",
+      "default": "./dist/intersortable.min.js"
     }
   },
   "files": [
@@ -33,6 +34,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:lib": "npx tsc lib/intersortable.ts --outDir dist --declaration --target ES2020 --module ESNext --jsx react-jsx --esModuleInterop --allowSyntheticDefaultImports --strict --skipLibCheck && npm run minify",
+    "minify": "esbuild dist/intersortable.js --minify --outfile=dist/intersortable.min.js --sourcemap",
+    "prepublishOnly": "npm run build:lib",
     "start": "next start",
     "type-check": "tsc --noEmit"
   },
@@ -45,6 +49,7 @@
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "esbuild": "^0.25.9",
     "next": "^14.2.32",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
