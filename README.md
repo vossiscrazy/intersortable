@@ -157,7 +157,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
-MIT © Intersortable Team
+MIT © Austin Voss
 
 ---
 
