@@ -1,6 +1,6 @@
 'use client'
 
-// intra-sortable.ts - Novel approach to sortable lists
+// intersortable.ts - Novel approach to sortable lists between containers
 
 let isDragging = false
 let draggedElement: HTMLElement | null = null

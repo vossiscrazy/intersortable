@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { initSortable, cleanupSortable } from '@/lib/intra-sortable'
+import { initSortable, cleanupSortable } from '@/lib/intersortable'
 
 export default function Home() {
   useEffect(() => {
