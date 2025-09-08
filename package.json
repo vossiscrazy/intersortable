@@ -1,58 +1,28 @@
 {
   "name": "intersortable",
-  "version": "1.0.1",
-  "description": "Zero-config sortable items between multiple containers. Lightweight drag-and-drop for Next.js and React with automatic state persistence.",
-  "main": "dist/intersortable.js",
-  "module": "dist/intersortable.esm.js",
-  "types": "dist/intersortable.d.ts",
-  "files": [
-    "dist",
-    "README.md",
-    "LICENSE"
-  ],
-  "keywords": [
-    "drag-and-drop",
-    "sortable",
-    "nextjs",
-    "react",
-    "typescript",
-    "lightweight",
-    "zero-config",
-    "intersortable",
-    "dnd",
-    "kanban",
-    "reorder"
-  ],
-  "author": "Austin Voss",
-  "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/vossiscrazy/intersortable.git"
-  },
-  "homepage": "https://github.com/vossiscrazy/intersortable#readme",
-  "bugs": {
-    "url": "https://github.com/vossiscrazy/intersortable/issues"
-  },
+  "version": "0.1.0",
+  "private": true,
   "scripts": {
-    "build": "npm run build:esm && npm run build:cjs && npm run build:types",
-    "build:esm": "esbuild lib/intersortable.ts --bundle --format=esm --outfile=dist/intersortable.esm.js --minify",
-    "build:cjs": "esbuild lib/intersortable.ts --bundle --format=cjs --outfile=dist/intersortable.js --minify",
-    "build:types": "tsc lib/intersortable.ts --declaration --emitDeclarationOnly --outDir dist",
-    "build:watch": "npm run build:esm -- --watch & npm run build:cjs -- --watch",
-    "dev:lib": "npm run build:watch",
-    "prepublishOnly": "npm run build"
+    "dev": "next dev --turbopack",
+    "build": "next build --turbopack",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "next": "15.5.2",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
-    "esbuild": "^0.19.0",
-    "typescript": "^5.0.0"
-  },
-  "peerDependencies": {
-    "react": ">=16.8.0"
-  },
-  "peerDependenciesMeta": {
-    "react": {
-      "optional": true
-    }
-  },
-  "sideEffects": false
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "esbuild": "^0.25.9",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.2",
+    "tailwindcss": "^4",
+    "typescript": "^5.9.2"
+  }
 }
