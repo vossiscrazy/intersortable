@@ -1,0 +1,31 @@
+# Exclude Next.js project files from npm package
+app/
+public/
+.next/
+out/
+build/
+
+# Configuration files
+next.config.js
+postcss.config.mjs
+tailwind.config.ts
+tsconfig.json
+eslint.config.js
+eslint.config.mjs
+
+# Development files
+.env*
+.vercel/
+node_modules/
+
+# Documentation/development only
+CLAUDE.md
+package-build.json
+package-publish.json
+targeting.txt
+
+# Keep only library essentials:
+# lib/ (source code)
+# dist/ (if we have built files)
+# README.md
+# LICENSE

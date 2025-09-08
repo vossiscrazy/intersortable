@@ -1,23 +1,53 @@
 {
   "name": "intersortable",
   "version": "1.1.0",
+  "description": "Zero-config sortable items between multiple containers for Next.js and React",
+  "keywords": ["react", "nextjs", "sortable", "drag-and-drop", "kanban", "typescript"],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vossiscrazy/intersortable.git"
+  },
+  "homepage": "https://github.com/vossiscrazy/intersortable",
+  "bugs": {
+    "url": "https://github.com/vossiscrazy/intersortable/issues"
+  },
+  "license": "MIT",
+  "author": "Austin Voss",
   "type": "module",
+  "main": "./lib/intersortable.ts",
+  "module": "./lib/intersortable.ts",
+  "types": "./lib/intersortable.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/intersortable.ts",
+      "import": "./lib/intersortable.ts",
+      "default": "./lib/intersortable.ts"
+    }
+  },
+  "files": [
+    "lib",
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "type-check": "tsc --noEmit"
   },
-  "dependencies": {
-    "next": "^14.2.32",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1"
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "next": "^14.2.32",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
     "tailwindcss": "^4",
     "typescript": "^5"
   },
