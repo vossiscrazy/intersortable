@@ -11,8 +11,8 @@ The biggest mistake you can make when building sortable lists is choosing a libr
 ## Features
 
 - 🚀 **Zero Configuration** - Two HTML attributes and you're done
-- 📦 **Lightweight** - ~4kb minified, zero dependencies
-- ⚡ **Performance First** - Built for Next.js Server Components and React 19
+- 📦 **Lightweight** - ~5kb minified, zero dependencies
+- ⚡ **Performance First** - Built for Next.js Server Components and React 18+
 - 🎯 **TypeScript Ready** - Full type definitions included
 - 📱 **Mobile Friendly** - Works smoothly on touch devices
 - 💾 **State Persistence** - Built-in support for localStorage, databases, or any storage

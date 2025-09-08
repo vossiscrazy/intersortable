@@ -80,7 +80,7 @@ export default function Home() {
               <p>
                 <strong className="text-[#ebdbb2]">Intersortable</strong> was designed by developers who understand that 
                 your users don&apos;t care about your implementation—they care about results. 
-                Built exclusively for <strong className="text-[#ebdbb2]">Next.js</strong> and React 19, 
+                Built for <strong className="text-[#ebdbb2]">Next.js</strong> and React 18+, 
                 it solves the inter-container sorting problem without the complexity overhead 
                 that general-purpose libraries impose.
               </p>
@@ -126,7 +126,7 @@ export default function Home() {
                 <h4 className="text-[#ebdbb2] text-xl font-semibold mb-4">The Facts Speak for Themselves</h4>
                 <div className="grid md:grid-cols-3 gap-6 text-center">
                   <div>
-                    <div className="text-[#d79921] text-3xl font-bold">~4kb</div>
+                    <div className="text-[#d79921] text-3xl font-bold">~5kb</div>
                     <div className="text-[#bdae93] text-sm">Minified bundle size</div>
                   </div>
                   <div>
@@ -181,7 +181,7 @@ export default function Home() {
                   </div>
                   <div>
                     <div className="text-[#ebdbb2] font-semibold mb-2">Future Proof</div>
-                    <div className="text-[#bdae93] text-sm">Built for React 19 Server Components. Compatible with Suspense. Ready for concurrent features.</div>
+                    <div className="text-[#bdae93] text-sm">Built for React 18+ Server Components. Compatible with Suspense. Ready for concurrent features.</div>
                   </div>
                 </div>
               </div>
