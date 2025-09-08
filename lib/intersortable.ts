@@ -1,5 +1,3 @@
-'use client'
-
 // intersortable.ts - Novel approach to sortable lists between containers
 
 // Configuration interface
@@ -20,7 +18,7 @@ export interface IntersortableConfig {
 let isDragging = false
 let draggedElement: HTMLElement | null = null
 let clonedElement: HTMLElement | null = null
-let dragHandleOffset = { x: 0, y: 0 }
+const dragHandleOffset = { x: 0, y: 0 }
 
 let draggedItemCenter = { x: 0, y: 0 }
 let targetedItem: HTMLElement | null = null
@@ -344,7 +342,7 @@ function handleMouseMove(e: MouseEvent) {
   }
 }
 
-function handleMouseUp(e: MouseEvent) {
+function handleMouseUp(_e: MouseEvent) {
   if (isDragging) {
     // Call onComplete callback before cleanup
     if (config.onComplete) {
