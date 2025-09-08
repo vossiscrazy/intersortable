@@ -1,6 +1,6 @@
 {
   "name": "intersortable",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "description": "Zero-config sortable items between multiple containers for Next.js and React",
   "keywords": ["react", "nextjs", "sortable", "drag-and-drop", "kanban", "typescript"],
   "repository": {
