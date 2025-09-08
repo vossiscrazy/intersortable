@@ -41,21 +41,30 @@ function getElementCenter(element: HTMLElement) {
 
 function setupClone(clone: HTMLElement, item: HTMLElement, mouseX: number, mouseY: number, handleOffset: {x: number, y: number}) {
   clone.removeAttribute('data-intersortable-item')
+  
+  // Add class for CSS targeting
+  clone.classList.add('intersortable-clone')
+  clone.setAttribute('data-intersortable-state', 'clone')
+  
+  // Base positioning and sizing (always needed)
   clone.style.position = 'fixed'
   clone.style.pointerEvents = 'none'
-  clone.style.zIndex = '9999'
-  clone.style.opacity = '1'
   clone.style.left = (mouseX - handleOffset.x) + 'px'
   clone.style.top = (mouseY - handleOffset.y) + 'px'
-  clone.style.transform = 'scale(1.05)'
-  clone.style.boxShadow = '0 10px 25px rgba(0, 0, 0, 0.3)'
   clone.style.width = item.offsetWidth + 'px'
   clone.style.height = item.offsetHeight + 'px'
+  
+  // Customizable styles using CSS custom properties
+  clone.style.zIndex = 'var(--intersortable-clone-z-index, 9999)'
+  clone.style.opacity = 'var(--intersortable-clone-opacity, 1)'
+  clone.style.transform = 'scale(var(--intersortable-clone-scale, 1.05))'
+  clone.style.boxShadow = 'var(--intersortable-clone-shadow, 0 10px 25px rgba(0, 0, 0, 0.3))'
+  clone.style.transition = 'var(--intersortable-clone-transition, none)'
 }
 
 function resetDragState() {
   isDragging = false
-  document.body.style.cursor = 'auto'
+  document.body.style.cursor = 'var(--intersortable-cursor-default, auto)'
   targetedItem = null
   lastTargetedItem = null
   lastInsertionPosition = 'above'
@@ -63,10 +72,14 @@ function resetDragState() {
   // Clean up any transition styles left on items
   const allItems = document.querySelectorAll('[data-intersortable-item]') as NodeListOf<HTMLElement>
   allItems.forEach(item => {
+    // Remove dragging classes and attributes
+    item.classList.remove('intersortable-dragging')
+    item.removeAttribute('data-intersortable-state')
+    
     setTimeout(() => {
       item.style.transition = ''
       item.style.transform = ''
-    }, 250) // Wait for animations to complete
+    }, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--intersortable-animation-duration') || '250')) // Use CSS custom property or default
   })
 }
 
@@ -129,7 +142,9 @@ function moveItemToInsertionPoint(itemToMove: HTMLElement, targetItem: HTMLEleme
     itemToMove.style.transition = 'none'
     
     requestAnimationFrame(() => {
-      itemToMove.style.transition = 'transform 0.2s ease-out'
+      const duration = getComputedStyle(document.documentElement).getPropertyValue('--intersortable-animation-duration') || '0.2s'
+      const easing = getComputedStyle(document.documentElement).getPropertyValue('--intersortable-animation-easing') || 'ease-out'
+      itemToMove.style.transition = `transform ${duration} ${easing}`
       itemToMove.style.transform = 'translate(0, 0)'
     })
   }
@@ -145,7 +160,9 @@ function moveItemToInsertionPoint(itemToMove: HTMLElement, targetItem: HTMLEleme
       element.style.transition = 'none'
       
       requestAnimationFrame(() => {
-        element.style.transition = 'transform 0.15s ease-out'
+        const duration = getComputedStyle(document.documentElement).getPropertyValue('--intersortable-displaced-duration') || '0.15s'
+        const easing = getComputedStyle(document.documentElement).getPropertyValue('--intersortable-animation-easing') || 'ease-out'
+        element.style.transition = `transform ${duration} ${easing}`
         element.style.transform = 'translate(0, 0)'
       })
     }
@@ -319,11 +336,15 @@ function handleMouseDown(e: MouseEvent) {
     // Calculate initial targeting
     calculateTargeting()
     
-    // Dim original
-    item.style.opacity = '0.4'
+    // Add dragging state
+    item.classList.add('intersortable-dragging')
+    item.setAttribute('data-intersortable-state', 'dragging')
+    
+    // Apply dragging styles with CSS custom properties
+    item.style.opacity = 'var(--intersortable-dragging-opacity, 0.4)'
     
     // Set cursor to grabbing
-    document.body.style.cursor = 'grabbing'
+    document.body.style.cursor = 'var(--intersortable-cursor-grabbing, grabbing)'
     
     e.preventDefault()
   }
@@ -352,12 +373,16 @@ function handleMouseUp(_e: MouseEvent) {
     
     // Cleanup
     if (clonedElement) {
+      clonedElement.classList.remove('intersortable-clone')
+      clonedElement.removeAttribute('data-intersortable-state')
       document.body.removeChild(clonedElement)
       clonedElement = null
     }
     
     if (draggedElement) {
       draggedElement.style.opacity = '1'
+      draggedElement.classList.remove('intersortable-dragging')
+      draggedElement.removeAttribute('data-intersortable-state')
       draggedElement = null
     }
     

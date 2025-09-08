@@ -187,6 +187,76 @@ export default function Home() {
               </div>
               
               <div className="bg-[#282828] rounded-lg p-6 my-8">
+                <h3 className="text-[#ebdbb2] text-xl font-semibold mb-4">CSS Customization</h3>
+                <p className="text-[#bdae93] mb-6">
+                  Customize the drag appearance and animations using CSS custom properties and classes. 
+                  No JavaScript configuration needed—just CSS!
+                </p>
+                
+                <div className="grid md:grid-cols-2 gap-6 mb-6">
+                  <div className="bg-[#3c3836] rounded p-4">
+                    <h4 className="text-[#d79921] text-sm font-semibold mb-2">CSS Custom Properties</h4>
+                    <pre className="text-xs text-[#bdae93] overflow-x-auto">
+<code>{`:root {
+  /* Clone appearance */
+  --intersortable-clone-scale: 1.08;
+  --intersortable-clone-opacity: 0.9;
+  --intersortable-clone-shadow: 0 20px 40px rgba(0,0,0,0.3);
+  --intersortable-clone-z-index: 10000;
+  
+  /* Dragged item opacity */
+  --intersortable-dragging-opacity: 0.3;
+  
+  /* Animation timing */
+  --intersortable-animation-duration: 0.3s;
+  --intersortable-animation-easing: ease-out;
+  --intersortable-displaced-duration: 0.25s;
+  
+  /* Cursors */
+  --intersortable-cursor-grabbing: grabbing;
+  --intersortable-cursor-default: auto;
+}`}</code>
+                    </pre>
+                  </div>
+                  
+                  <div className="bg-[#3c3836] rounded p-4">
+                    <h4 className="text-[#d79921] text-sm font-semibold mb-2">CSS Classes</h4>
+                    <pre className="text-xs text-[#bdae93] overflow-x-auto">
+<code>{`/* Style the clone */
+.intersortable-clone {
+  border: 2px solid #d79921;
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+
+/* Style the original item while dragging */
+.intersortable-dragging {
+  transform: rotate(-2deg);
+  filter: grayscale(50%);
+}
+
+/* Target by state */
+[data-intersortable-state="clone"] {
+  box-shadow: 0 0 0 3px rgba(215, 153, 33, 0.3);
+}
+
+[data-intersortable-state="dragging"] {
+  outline: 2px dashed #d79921;
+}`}</code>
+                    </pre>
+                  </div>
+                </div>
+                
+                <div className="bg-[#504945] rounded p-4">
+                  <h4 className="text-[#ebdbb2] text-sm font-semibold mb-2">💡 Pro Tip</h4>
+                  <p className="text-[#bdae93] text-sm">
+                    Use both CSS custom properties for values and CSS classes for complete style overrides. 
+                    Custom properties are inherited, so you can set different styles per container!
+                  </p>
+                </div>
+              </div>
+
+              <div className="bg-[#282828] rounded-lg p-6 my-8">
                 <h3 className="text-[#ebdbb2] text-xl font-semibold mb-4">Complete API Reference</h3>
                 <div className="space-y-4 text-sm">
                   <div>

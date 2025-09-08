@@ -74,6 +74,80 @@ export default function MyComponent() {
 }
 ```
 
+## CSS Customization
+
+Intersortable uses CSS custom properties and classes for easy styling customization. No JavaScript configuration needed!
+
+### CSS Custom Properties
+
+Override these variables in your CSS to customize the appearance:
+
+```css
+:root {
+  /* Clone appearance */
+  --intersortable-clone-scale: 1.08;
+  --intersortable-clone-opacity: 0.95;
+  --intersortable-clone-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  --intersortable-clone-z-index: 10000;
+  
+  /* Dragged item opacity */
+  --intersortable-dragging-opacity: 0.4;
+  
+  /* Animation timing */
+  --intersortable-animation-duration: 0.25s;
+  --intersortable-animation-easing: ease-out;
+  --intersortable-displaced-duration: 0.2s;
+  
+  /* Cursors */
+  --intersortable-cursor-grabbing: grabbing;
+  --intersortable-cursor-default: auto;
+}
+```
+
+### CSS Classes
+
+Style elements directly using these classes:
+
+```css
+/* Style the clone while dragging */
+.intersortable-clone {
+  border: 2px solid #007acc;
+  border-radius: 8px;
+  backdrop-filter: blur(4px);
+}
+
+/* Style the original item while dragging */
+.intersortable-dragging {
+  transform: rotate(-1deg);
+  filter: brightness(0.8);
+}
+
+/* Target by state attribute */
+[data-intersortable-state="clone"] {
+  /* Clone-specific styles */
+}
+
+[data-intersortable-state="dragging"] {
+  /* Dragging-specific styles */
+}
+```
+
+### Per-Container Styling
+
+Since CSS custom properties inherit, you can set different styles per container:
+
+```css
+.container-a {
+  --intersortable-clone-scale: 1.1;
+  --intersortable-clone-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
+}
+
+.container-b {
+  --intersortable-clone-scale: 1.05;
+  --intersortable-clone-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+}
+```
+
 ## API Reference
 
 ### `initSortable(config)`
