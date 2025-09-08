@@ -28,7 +28,7 @@ function setupClone(clone: HTMLElement, item: HTMLElement, mouseX: number, mouse
   clone.style.position = 'fixed'
   clone.style.pointerEvents = 'none'
   clone.style.zIndex = '9999'
-  clone.style.opacity = '0.9'
+  clone.style.opacity = '1'
   clone.style.left = (mouseX - handleOffset.x) + 'px'
   clone.style.top = (mouseY - handleOffset.y) + 'px'
   clone.style.transform = 'scale(1.05)'
@@ -43,10 +43,36 @@ function resetDragState() {
   targetedItem = null
   lastTargetedItem = null
   lastInsertionPosition = 'above'
+  
+  // Clean up any transition styles left on items
+  const allItems = document.querySelectorAll('[data-sortable-item]') as NodeListOf<HTMLElement>
+  allItems.forEach(item => {
+    setTimeout(() => {
+      item.style.transition = ''
+      item.style.transform = ''
+    }, 250) // Wait for animations to complete
+  })
 }
 
-// Function to move an item to the insertion point in real-time
+// Function to move an item to the insertion point with smooth animations
 function moveItemToInsertionPoint(itemToMove: HTMLElement, targetItem: HTMLElement, position: 'above' | 'below') {
+  // FLIP technique: First - capture current positions of all affected items
+  const affectedItems: {element: HTMLElement, rect: DOMRect}[] = []
+  
+  // Find all sortable items that might be affected by this move
+  const allItems = document.querySelectorAll('[data-sortable-item]') as NodeListOf<HTMLElement>
+  allItems.forEach(item => {
+    if (item !== itemToMove) { // Don't track the dragged item itself
+      affectedItems.push({
+        element: item,
+        rect: item.getBoundingClientRect()
+      })
+    }
+  })
+  
+  // Capture the moving item's current position
+  const movingItemRect = itemToMove.getBoundingClientRect()
+  
   // Remove the item from its current position
   if (itemToMove.parentNode) {
     itemToMove.parentNode.removeChild(itemToMove)
@@ -56,25 +82,58 @@ function moveItemToInsertionPoint(itemToMove: HTMLElement, targetItem: HTMLEleme
   if (targetItem.hasAttribute('data-board')) {
     // Empty board - just append the item to it
     targetItem.appendChild(itemToMove)
-    return
-  }
-  
-  // Normal item-to-item insertion
-  const targetParent = targetItem.parentNode
-  if (!targetParent) return
-  
-  // Insert directly relative to the target item
-  if (position === 'above') {
-    targetParent.insertBefore(itemToMove, targetItem)
   } else {
-    // Insert after the target item
-    const nextSibling = targetItem.nextSibling
-    if (nextSibling) {
-      targetParent.insertBefore(itemToMove, nextSibling)
+    // Normal item-to-item insertion
+    const targetParent = targetItem.parentNode
+    if (!targetParent) return
+    
+    // Insert directly relative to the target item
+    if (position === 'above') {
+      targetParent.insertBefore(itemToMove, targetItem)
     } else {
-      targetParent.appendChild(itemToMove)
+      // Insert after the target item
+      const nextSibling = targetItem.nextSibling
+      if (nextSibling) {
+        targetParent.insertBefore(itemToMove, nextSibling)
+      } else {
+        targetParent.appendChild(itemToMove)
+      }
     }
   }
+  
+  // FLIP technique: Last - get new positions, Invert - calculate differences, Play - animate
+  const newMovingItemRect = itemToMove.getBoundingClientRect()
+  
+  // Animate the moving item from its old position to new position
+  const deltaX = movingItemRect.left - newMovingItemRect.left
+  const deltaY = movingItemRect.top - newMovingItemRect.top
+  
+  if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+    itemToMove.style.transform = `translate(${deltaX}px, ${deltaY}px)`
+    itemToMove.style.transition = 'none'
+    
+    requestAnimationFrame(() => {
+      itemToMove.style.transition = 'transform 0.2s ease-out'
+      itemToMove.style.transform = 'translate(0, 0)'
+    })
+  }
+  
+  // Animate displaced items
+  affectedItems.forEach(({element, rect}) => {
+    const newRect = element.getBoundingClientRect()
+    const deltaX = rect.left - newRect.left
+    const deltaY = rect.top - newRect.top
+    
+    if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
+      element.style.transform = `translate(${deltaX}px, ${deltaY}px)`
+      element.style.transition = 'none'
+      
+      requestAnimationFrame(() => {
+        element.style.transition = 'transform 0.15s ease-out'
+        element.style.transform = 'translate(0, 0)'
+      })
+    }
+  })
 }
 
 
