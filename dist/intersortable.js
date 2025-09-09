@@ -2,6 +2,7 @@
 // Global state
 let isDragging = false;
 let draggedElement = null;
+let draggedHandle = null;
 let clonedElement = null;
 const dragHandleOffset = { x: 0, y: 0 };
 let draggedItemCenter = { x: 0, y: 0 };
@@ -44,12 +45,19 @@ function resetDragState() {
     targetedItem = null;
     lastTargetedItem = null;
     lastInsertionPosition = 'above';
-    // Clean up any transition styles left on items
+    // Clean up any transition styles left on items and restore pointer events
     const allItems = document.querySelectorAll('[data-intersortable-item]');
     allItems.forEach(item => {
         // Remove dragging classes and attributes
         item.classList.remove('intersortable-dragging');
         item.removeAttribute('data-intersortable-state');
+        // Restore pointer events
+        item.style.pointerEvents = '';
+        // Also restore pointer events on drag handles
+        const handles = item.querySelectorAll('[data-drag-handle]');
+        handles.forEach(handle => {
+            handle.style.pointerEvents = '';
+        });
         setTimeout(() => {
             item.style.transition = '';
             item.style.transform = '';
@@ -226,8 +234,33 @@ function getCurrentSortOrder() {
     });
     return sortOrder;
 }
+function applyCursorStyles() {
+    // Apply default grab cursor to all intersortable items
+    const items = document.querySelectorAll('[data-intersortable-item]');
+    items.forEach(item => {
+        // Check if item has a drag handle
+        const hasHandle = item.querySelector('[data-drag-handle]');
+        if (hasHandle) {
+            // Item has handle - only the handle should be grabbable
+            const handles = item.querySelectorAll('[data-drag-handle]');
+            handles.forEach(handle => {
+                if (!handle.style.cursor) {
+                    handle.style.cursor = 'var(--intersortable-cursor-grab, grab)';
+                }
+            });
+        }
+        else {
+            // No handle - entire item is grabbable
+            if (!item.style.cursor) {
+                item.style.cursor = 'var(--intersortable-cursor-grab, grab)';
+            }
+        }
+    });
+}
 export function initSortable(userConfig = {}) {
     config = { ...userConfig };
+    // Apply default cursor styles to intersortable items
+    applyCursorStyles();
     document.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -257,6 +290,7 @@ function handleMouseDown(e) {
     if (item && dragHandle) {
         isDragging = true;
         draggedElement = item;
+        draggedHandle = dragHandle;
         // Reset tracking variables for real-time movement
         lastTargetedItem = null;
         lastInsertionPosition = 'above';
@@ -275,8 +309,21 @@ function handleMouseDown(e) {
         item.setAttribute('data-intersortable-state', 'dragging');
         // Apply dragging styles with CSS custom properties
         item.style.opacity = 'var(--intersortable-dragging-opacity, 0.4)';
-        // Set cursor to grabbing
+        // Set cursor to grabbing on body and the specific draggable element
         document.body.style.cursor = 'var(--intersortable-cursor-grabbing, grabbing)';
+        dragHandle.style.cursor = 'var(--intersortable-cursor-grabbing, grabbing)';
+        // Disable pointer events on all other intersortable items to prevent cursor conflicts
+        const allItems = document.querySelectorAll('[data-intersortable-item]');
+        allItems.forEach(otherItem => {
+            if (otherItem !== item) {
+                otherItem.style.pointerEvents = 'none';
+                // Also disable pointer events on their drag handles
+                const otherHandles = otherItem.querySelectorAll('[data-drag-handle]');
+                otherHandles.forEach(handle => {
+                    handle.style.pointerEvents = 'none';
+                });
+            }
+        });
         e.preventDefault();
     }
 }
@@ -310,6 +357,11 @@ function handleMouseUp(_e) {
             draggedElement.classList.remove('intersortable-dragging');
             draggedElement.removeAttribute('data-intersortable-state');
             draggedElement = null;
+        }
+        if (draggedHandle) {
+            // Reset cursor on the specific handle that was dragged
+            draggedHandle.style.cursor = 'var(--intersortable-cursor-grab, grab)';
+            draggedHandle = null;
         }
         resetDragState();
     }
