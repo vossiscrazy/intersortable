@@ -12,6 +12,8 @@ let lastTargetedItem = null;
 let lastInsertionPosition = 'above';
 // Configuration
 let config = {};
+// MutationObserver for detecting new items
+let mutationObserver = null;
 // Helper functions
 function calculateDistance(point1, point2) {
     return Math.sqrt(Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2));
@@ -238,29 +240,85 @@ function applyCursorStyles() {
     // Apply default grab cursor to all intersortable items
     const items = document.querySelectorAll('[data-intersortable-item]');
     items.forEach(item => {
-        // Check if item has a drag handle
-        const hasHandle = item.querySelector('[data-drag-handle]');
-        if (hasHandle) {
-            // Item has handle - only the handle should be grabbable
-            const handles = item.querySelectorAll('[data-drag-handle]');
-            handles.forEach(handle => {
-                if (!handle.style.cursor) {
-                    handle.style.cursor = 'var(--intersortable-cursor-grab, grab)';
-                }
-            });
-        }
-        else {
-            // No handle - entire item is grabbable
-            if (!item.style.cursor) {
-                item.style.cursor = 'var(--intersortable-cursor-grab, grab)';
-            }
-        }
+        applyCursorStyleToItem(item);
     });
+}
+function applyCursorStyleToItem(item) {
+    // Check if item has a drag handle
+    const hasHandle = item.querySelector('[data-drag-handle]');
+    if (hasHandle) {
+        // Item has handle - only the handle should be grabbable
+        const handles = item.querySelectorAll('[data-drag-handle]');
+        handles.forEach(handle => {
+            if (!handle.style.cursor) {
+                handle.style.cursor = 'var(--intersortable-cursor-grab, grab)';
+            }
+        });
+    }
+    else {
+        // No handle - entire item is grabbable
+        if (!item.style.cursor) {
+            item.style.cursor = 'var(--intersortable-cursor-grab, grab)';
+        }
+    }
+}
+function handleMutations(mutations) {
+    mutations.forEach(mutation => {
+        // Handle added nodes
+        mutation.addedNodes.forEach(node => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+                const element = node;
+                // Check if the added node is an intersortable item
+                if (element.hasAttribute('data-intersortable-item')) {
+                    applyCursorStyleToItem(element);
+                }
+                // Check if the added node contains intersortable items
+                const items = element.querySelectorAll('[data-intersortable-item]');
+                items.forEach(item => {
+                    applyCursorStyleToItem(item);
+                });
+                // Check if the added node is a drag handle
+                if (element.hasAttribute('data-drag-handle')) {
+                    if (!element.style.cursor) {
+                        element.style.cursor = 'var(--intersortable-cursor-grab, grab)';
+                    }
+                }
+                // Check if the added node contains drag handles
+                const handles = element.querySelectorAll('[data-drag-handle]');
+                handles.forEach(handle => {
+                    if (!handle.style.cursor) {
+                        handle.style.cursor = 'var(--intersortable-cursor-grab, grab)';
+                    }
+                });
+            }
+        });
+    });
+}
+function setupMutationObserver() {
+    // Clean up existing observer if any
+    if (mutationObserver) {
+        mutationObserver.disconnect();
+    }
+    // Create new observer
+    mutationObserver = new MutationObserver(handleMutations);
+    // Start observing the document for changes
+    mutationObserver.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+}
+function cleanupMutationObserver() {
+    if (mutationObserver) {
+        mutationObserver.disconnect();
+        mutationObserver = null;
+    }
 }
 export function initSortable(userConfig = {}) {
     config = { ...userConfig };
     // Apply default cursor styles to intersortable items
     applyCursorStyles();
+    // Set up MutationObserver to watch for new items
+    setupMutationObserver();
     document.addEventListener('mousedown', handleMouseDown);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
@@ -392,4 +450,6 @@ export function cleanupSortable() {
     document.removeEventListener('mousedown', handleMouseDown);
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
+    // Clean up MutationObserver
+    cleanupMutationObserver();
 }
