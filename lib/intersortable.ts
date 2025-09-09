@@ -2,6 +2,10 @@
 
 // Configuration interface
 export interface IntersortableConfig {
+  onDragStart?: (data: {
+    itemId: string
+    element: HTMLElement
+  }) => void
   onMove?: (data: {
     itemId: string
     fromContainer: string
@@ -9,7 +13,13 @@ export interface IntersortableConfig {
     newIndex: number
     allContainers: Record<string, string[]>
   }) => void
-  onComplete?: (allContainers: Record<string, string[]>) => void
+  onDOMStart?: (data: {
+    itemId: string
+    fromContainer: string
+    toContainer: string
+  }) => void
+  onDOMComplete?: (allContainers: Record<string, string[]>) => void
+  onDragEnd?: () => void
   getItemId?: (element: HTMLElement) => string
   getContainerId?: (element: HTMLElement) => string
 }
@@ -97,6 +107,18 @@ function resetDragState() {
 
 // Function to move an item to the insertion point with smooth animations
 function moveItemToInsertionPoint(itemToMove: HTMLElement, targetItem: HTMLElement, position: 'above' | 'below') {
+  // Store original container before DOM manipulation for onMove callback
+  const originalFromContainer = (config.getContainerId || defaultGetContainerId)(itemToMove)
+  const targetToContainer = targetItem.hasAttribute('data-intersortable-container') 
+    ? (config.getContainerId || defaultGetContainerId)(targetItem)
+    : (config.getContainerId || defaultGetContainerId)(targetItem.closest('[data-intersortable-container]') as HTMLElement || targetItem)
+  
+  // Call onDOMStart callback before any DOM manipulation
+  if (config.onDOMStart) {
+    const itemId = (config.getItemId || defaultGetItemId)(itemToMove)
+    config.onDOMStart({ itemId, fromContainer: originalFromContainer, toContainer: targetToContainer })
+  }
+  
   // FLIP technique: First - capture current positions of all affected items
   const affectedItems: {element: HTMLElement, rect: DOMRect}[] = []
   
@@ -140,6 +162,27 @@ function moveItemToInsertionPoint(itemToMove: HTMLElement, targetItem: HTMLEleme
         targetParent.appendChild(itemToMove)
       }
     }
+  }
+  
+  // Call onDOMComplete callback after DOM manipulation is complete
+  if (config.onDOMComplete) {
+    const allContainers = getCurrentSortOrder()
+    config.onDOMComplete(allContainers)
+  }
+  
+  // Call onMove callback for real-time React state updates
+  if (config.onMove) {
+    const itemId = (config.getItemId || defaultGetItemId)(itemToMove)
+    const allContainers = getCurrentSortOrder()
+    const newIndex = allContainers[targetToContainer]?.indexOf(itemId) ?? -1
+    
+    config.onMove({
+      itemId,
+      fromContainer: originalFromContainer, // Where it came from (stored before DOM manipulation)
+      toContainer: targetToContainer,       // Where it went to (calculated before DOM manipulation)
+      newIndex,
+      allContainers
+    })
   }
   
   // FLIP technique: Last - get new positions, Invert - calculate differences, Play - animate
@@ -239,26 +282,7 @@ function calculateTargeting() {
   // Only move if the target or position has changed
   if (nearestItem && draggedElement && nearestItem !== draggedElement) {
     if (nearestItem !== lastTargetedItem || insertionPosition !== lastInsertionPosition) {
-      const oldContainerId = (config.getContainerId || defaultGetContainerId)(draggedElement)
       moveItemToInsertionPoint(draggedElement, nearestItem, insertionPosition)
-      
-      // Call onMove callback if provided
-      if (config.onMove) {
-        const itemId = (config.getItemId || defaultGetItemId)(draggedElement)
-        const newContainerId = (config.getContainerId || defaultGetContainerId)(draggedElement)
-        const allContainers = getCurrentSortOrder()
-        const newIndex = allContainers[newContainerId]?.indexOf(itemId) ?? -1
-        
-        if (itemId && oldContainerId && newContainerId) {
-          config.onMove({
-            itemId,
-            fromContainer: oldContainerId,
-            toContainer: newContainerId,
-            newIndex,
-            allContainers
-          })
-        }
-      }
       
       lastTargetedItem = nearestItem
       lastInsertionPosition = insertionPosition
@@ -425,6 +449,12 @@ function handleMouseDown(e: MouseEvent) {
     draggedElement = item
     draggedHandle = dragHandle
     
+    // Call onDragStart callback
+    if (config.onDragStart) {
+      const itemId = (config.getItemId || defaultGetItemId)(item)
+      config.onDragStart({ itemId, element: item })
+    }
+    
     // Reset tracking variables for real-time movement
     lastTargetedItem = null
     lastInsertionPosition = 'above'
@@ -485,10 +515,9 @@ function handleMouseMove(e: MouseEvent) {
 
 function handleMouseUp(_e: MouseEvent) {
   if (isDragging) {
-    // Call onComplete callback before cleanup
-    if (config.onComplete) {
-      const allContainers = getCurrentSortOrder()
-      config.onComplete(allContainers)
+    // Call onDragEnd callback before cleanup
+    if (config.onDragEnd) {
+      config.onDragEnd()
     }
     
     // Cleanup

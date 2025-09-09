@@ -11,7 +11,7 @@ The biggest mistake you can make when building sortable lists is choosing a libr
 ## Features
 
 - 🚀 **Zero Configuration** - Two HTML attributes and you're done
-- 📦 **Lightweight** - 7.0kb minified, zero dependencies
+- 📦 **Lightweight** - 7.4kb minified, zero dependencies
 - ⚡ **Performance First** - Built for Next.js Server Components and React 18+
 - 🎯 **TypeScript Ready** - Full type definitions included
 - 📱 **Mobile Friendly** - Works smoothly on touch devices
@@ -55,13 +55,22 @@ import { initSortable, cleanupSortable } from 'intersortable'
 export default function MyComponent() {
   useEffect(() => {
     initSortable({
+      onDragStart: ({ itemId, element }) => {
+        console.log(`Started dragging ${itemId}`)
+        // Update UI state for drag start
+      },
       onMove: ({ itemId, fromContainer, toContainer, newIndex, allContainers }) => {
         console.log(`Moved ${itemId} from ${fromContainer} to ${toContainer}`)
-        // Save to your backend/localStorage
+        // Real-time React state updates during drag
         localStorage.setItem('sortOrder', JSON.stringify(allContainers))
       },
-      onComplete: (allContainers) => {
-        console.log('Drag complete:', allContainers)
+      onDOMComplete: (allContainers) => {
+        console.log('DOM updated:', allContainers)
+        // Perfect for triggering React re-renders
+      },
+      onDragEnd: () => {
+        console.log('Drag ended')
+        // Cleanup, reset UI state
       }
     })
     
@@ -155,8 +164,11 @@ Since CSS custom properties inherit, you can set different styles per container:
 Initialize the sortable functionality.
 
 **Config Options:**
-- `onMove?`: Real-time callback fired during dragging
-- `onComplete?`: Callback fired when dragging ends
+- `onDragStart?`: Called when drag begins - perfect for UI state, logging
+- `onMove?`: Called every time item moves during drag - essential for React state updates
+- `onDOMStart?`: Called right before DOM manipulation - last chance for validation
+- `onDOMComplete?`: Called immediately after DOM is updated - perfect for persistence
+- `onDragEnd?`: Called when drag ends - cleanup, reset UI
 - `getItemId?`: Custom function to extract item IDs
 - `getContainerId?`: Custom function to extract container IDs
 
@@ -195,8 +207,16 @@ Remove event listeners when component unmounts.
 initSortable({
   getItemId: (element) => element.dataset.customItemId || '',
   getContainerId: (element) => element.dataset.customContainerId || '',
+  onDragStart: ({ itemId, element }) => {
+    // Track drag start, update UI state
+  },
   onMove: ({ itemId, fromContainer, toContainer, newIndex, allContainers }) => {
-    // Your logic here
+    // Real-time updates for responsive UIs
+    updateReactState(allContainers)
+  },
+  onDOMComplete: (allContainers) => {
+    // Persist after DOM changes are complete
+    saveToDatabase(allContainers)
   }
 })
 ```
@@ -204,7 +224,7 @@ initSortable({
 ### State Persistence
 
 ```tsx
-// Save state in real-time
+// Real-time persistence during drag
 onMove: ({ allContainers }) => {
   fetch('/api/save-order', {
     method: 'POST',
@@ -212,9 +232,15 @@ onMove: ({ allContainers }) => {
   })
 }
 
-// Or batch saves
-onComplete: (allContainers) => {
+// Persist after DOM manipulation is complete
+onDOMComplete: (allContainers) => {
   localStorage.setItem('sortOrder', JSON.stringify(allContainers))
+}
+
+// Or batch saves at the end
+onDragEnd: () => {
+  const finalState = getCurrentSortOrder()
+  saveToPersistentStorage(finalState)
 }
 ```
 

@@ -1,4 +1,8 @@
 export interface IntersortableConfig {
+    onDragStart?: (data: {
+        itemId: string;
+        element: HTMLElement;
+    }) => void;
     onMove?: (data: {
         itemId: string;
         fromContainer: string;
@@ -6,7 +10,13 @@ export interface IntersortableConfig {
         newIndex: number;
         allContainers: Record<string, string[]>;
     }) => void;
-    onComplete?: (allContainers: Record<string, string[]>) => void;
+    onDOMStart?: (data: {
+        itemId: string;
+        fromContainer: string;
+        toContainer: string;
+    }) => void;
+    onDOMComplete?: (allContainers: Record<string, string[]>) => void;
+    onDragEnd?: () => void;
     getItemId?: (element: HTMLElement) => string;
     getContainerId?: (element: HTMLElement) => string;
 }
