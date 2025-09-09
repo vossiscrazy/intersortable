@@ -35,9 +35,9 @@ export default function Home() {
                     <img src="/icons/info.svg" alt="Info" className="w-5 h-5" style={{filter: 'brightness(0) saturate(100%) invert(92%) sepia(14%) saturate(218%) hue-rotate(16deg) brightness(97%) contrast(91%)'}} />
                     <span>Drag handle only</span>
                   </div>
-                  <img src="/icons/drag-handle.svg" alt="Drag handle" className="w-6 h-6 cursor-grab active:cursor-grabbing" style={{filter: 'brightness(0) saturate(100%) invert(92%) sepia(14%) saturate(218%) hue-rotate(16deg) brightness(97%) contrast(91%)'}} data-drag-handle />
+                  <img src="/icons/drag-handle.svg" alt="Drag handle" className="w-6 h-6" style={{filter: 'brightness(0) saturate(100%) invert(92%) sepia(14%) saturate(218%) hue-rotate(16deg) brightness(97%) contrast(91%)'}} data-drag-handle />
                 </div>
-                <div className="bg-[#98971a] rounded p-3 text-[#282828] cursor-grab active:cursor-grabbing" data-intersortable-item data-item-id="item-3">
+                <div className="bg-[#98971a] rounded p-3 text-[#282828]" data-intersortable-item data-item-id="item-3">
                   <div className="flex items-center gap-2">
                     <img src="/icons/sort-intra-container.svg" alt="Intra sort" className="w-5 h-5" style={{filter: 'brightness(0) saturate(100%) invert(21%) sepia(7%) saturate(2019%) hue-rotate(356deg) brightness(90%) contrast(91%)'}} />
                     <span>Reorder & sort</span>
@@ -52,7 +52,7 @@ export default function Home() {
             <div className="bg-[#3c3836] rounded-lg p-6">
               <h2 className="text-[#ebdbb2] text-2xl font-semibold mb-4">Container B</h2>
               <div className="space-y-2" data-intersortable-container data-container-id="list-b">
-                <div className="bg-[#d79921] rounded p-3 text-[#282828] cursor-grab active:cursor-grabbing" data-intersortable-item data-item-id="item-4">
+                <div className="bg-[#d79921] rounded p-3 text-[#282828]" data-intersortable-item data-item-id="item-4">
                   <div className="flex items-center gap-2">
                     <img src="/icons/sort-inter-container.svg" alt="Inter sort" className="w-5 h-5" style={{filter: 'brightness(0) saturate(100%) invert(21%) sepia(7%) saturate(2019%) hue-rotate(356deg) brightness(90%) contrast(91%)'}} />
                     <span>Between containers</span>
