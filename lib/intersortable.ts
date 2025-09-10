@@ -6,11 +6,19 @@ interface DragState {
   cloneItem: HTMLElement | null;
   startX: number;
   startY: number;
-  targetingMarkers: HTMLElement[];
   nearestItem: HTMLElement | null;
   lastTargetedElement: HTMLElement | null;
   ghostItems: HTMLElement[];
   animatingElements: Set<HTMLElement>;
+}
+
+interface IntersortableCallbacks {
+  onPickup?: (state: ContainerState) => void;
+  onDrop?: (state: ContainerState) => void;
+}
+
+interface ContainerState {
+  [containerId: string]: string[];
 }
 
 class Intersortable {
@@ -20,14 +28,17 @@ class Intersortable {
     cloneItem: null,
     startX: 0,
     startY: 0,
-    targetingMarkers: [],
     nearestItem: null,
     lastTargetedElement: null,
     ghostItems: [],
     animatingElements: new Set()
   };
+  private callbacks: IntersortableCallbacks = {};
 
-  constructor() {
+  constructor(callbacks?: IntersortableCallbacks) {
+    if (callbacks) {
+      this.callbacks = callbacks;
+    }
     this.init();
   }
 
@@ -58,6 +69,11 @@ class Intersortable {
     
     // Initialize targeting system
     this.initializeTargetingSystem();
+    
+    // Trigger onPickup callback
+    if (this.callbacks.onPickup) {
+      this.callbacks.onPickup(this.getCurrentState());
+    }
   }
 
   private createClone(originalItem: HTMLElement, x: number, y: number) {
@@ -127,6 +143,11 @@ class Intersortable {
     // Clean up ghost items
     this.cleanupGhostItems();
 
+    // Trigger onDrop callback
+    if (this.callbacks.onDrop) {
+      this.callbacks.onDrop(this.getCurrentState());
+    }
+
     // Reset drag state
     this.dragState = {
       isDragging: false,
@@ -134,7 +155,6 @@ class Intersortable {
       cloneItem: null,
       startX: 0,
       startY: 0,
-      targetingMarkers: [],
       nearestItem: null,
       lastTargetedElement: null,
       ghostItems: [],
@@ -150,21 +170,10 @@ class Intersortable {
       const items = container.querySelectorAll('[data-intersortable-item-id]');
       
       if (items.length === 0) {
-        // Empty container - create ghost item and target it
+        // Empty container - create ghost item
         const ghostItem = this.createGhostItem();
         container.appendChild(ghostItem);
         this.dragState.ghostItems.push(ghostItem);
-        
-        const marker = this.createTargetingMarker(ghostItem, 'item');
-        this.dragState.targetingMarkers.push(marker);
-        document.body.appendChild(marker);
-      } else {
-        // Container has items - target each item
-        items.forEach(item => {
-          const marker = this.createTargetingMarker(item as HTMLElement, 'item');
-          this.dragState.targetingMarkers.push(marker);
-          document.body.appendChild(marker);
-        });
       }
     });
     
@@ -183,30 +192,6 @@ class Intersortable {
     return ghost;
   }
 
-  private createTargetingMarker(element: HTMLElement, type: 'item' | 'container'): HTMLElement {
-    const marker = document.createElement('div');
-    marker.className = 'intersortable-targeting-marker';
-    
-    const rect = element.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    
-    marker.style.position = 'fixed';
-    marker.style.left = `${centerX}px`;
-    marker.style.top = `${centerY}px`;
-    marker.style.transform = 'translate(-50%, -50%)';
-    marker.style.pointerEvents = 'none';
-    marker.style.zIndex = '999';
-    
-    // Store reference to the element
-    if (type === 'item') {
-      marker.setAttribute('data-target-item-id', element.getAttribute('data-intersortable-item-id') || '');
-    } else {
-      marker.setAttribute('data-target-container-id', element.getAttribute('data-intersortable-container-id') || '');
-    }
-    
-    return marker;
-  }
 
   private updateTargetingSystem() {
     if (!this.dragState.cloneItem) return;
@@ -216,43 +201,31 @@ class Intersortable {
     const cloneCenterY = cloneRect.top + cloneRect.height / 2;
     
     let nearestDistance = Infinity;
-    let nearestMarker: HTMLElement | null = null;
+    let nearestElement: HTMLElement | null = null;
     
-    // Update all markers and find nearest
-    this.dragState.targetingMarkers.forEach(marker => {
-      const markerRect = marker.getBoundingClientRect();
-      const markerCenterX = markerRect.left + markerRect.width / 2;
-      const markerCenterY = markerRect.top + markerRect.height / 2;
+    // Get all targetable elements (items and ghosts)
+    const allItems = document.querySelectorAll('[data-intersortable-item-id]') as NodeListOf<HTMLElement>;
+    
+    // Find nearest element by calculating distances
+    allItems.forEach(item => {
+      const itemRect = item.getBoundingClientRect();
+      const itemCenterX = itemRect.left + itemRect.width / 2;
+      const itemCenterY = itemRect.top + itemRect.height / 2;
       
       const distance = Math.sqrt(
-        Math.pow(cloneCenterX - markerCenterX, 2) + 
-        Math.pow(cloneCenterY - markerCenterY, 2)
+        Math.pow(cloneCenterX - itemCenterX, 2) + 
+        Math.pow(cloneCenterY - itemCenterY, 2)
       );
-      
-      // Remove previous targeting state
-      marker.classList.remove('intersortable-targeting-active');
       
       if (distance < nearestDistance) {
         nearestDistance = distance;
-        nearestMarker = marker;
+        nearestElement = item;
       }
     });
     
-    // Highlight nearest marker
-    if (nearestMarker) {
-      nearestMarker.classList.add('intersortable-targeting-active');
-      
-      // Find the corresponding element (item or container)
-      const targetItemId = nearestMarker.getAttribute('data-target-item-id');
-      const targetContainerId = nearestMarker.getAttribute('data-target-container-id');
-      
-      if (targetItemId) {
-        this.dragState.nearestItem = document.querySelector(`[data-intersortable-item-id="${targetItemId}"]`) as HTMLElement;
-      } else if (targetContainerId) {
-        this.dragState.nearestItem = document.querySelector(`[data-intersortable-container-id="${targetContainerId}"]`) as HTMLElement;
-      }
-      
-      // Move original item in real-time
+    // Update nearest item and move original item
+    if (nearestElement) {
+      this.dragState.nearestItem = nearestElement;
       this.moveOriginalItem();
     }
   }
@@ -271,17 +244,11 @@ class Intersortable {
     let insertionPoint: Node | null = null;
     
     if (isGhost) {
-      // Replace ghost with original item
+      // Insert original item above the ghost (always before)
       const ghostParent = nearestElement.parentNode;
       if (ghostParent && originalItem.parentNode !== ghostParent) {
-        // Remove the ghost from our tracking since it's being replaced
-        const ghostIndex = this.dragState.ghostItems.indexOf(nearestElement);
-        if (ghostIndex > -1) {
-          this.dragState.ghostItems.splice(ghostIndex, 1);
-        }
-        
         targetParent = ghostParent;
-        insertionPoint = nearestElement;
+        insertionPoint = nearestElement;  // Always insert before the ghost
         needsRecreate = true;
       }
     } else {
@@ -311,7 +278,7 @@ class Intersortable {
     
     // Perform FLIP animation if we need to move
     if (needsRecreate && targetParent && insertionPoint !== undefined) {
-      this.performFLIPAnimation(targetParent, insertionPoint, isGhost);
+      this.performFLIPAnimation(targetParent, insertionPoint);
     }
     
     // Only recreate targeting system if DOM structure actually changed
@@ -320,7 +287,7 @@ class Intersortable {
     }
   }
 
-  private performFLIPAnimation(targetParent: Node, insertionPoint: Node | null, isGhostReplacement: boolean) {
+  private performFLIPAnimation(targetParent: Node, insertionPoint: Node | null) {
     // FIRST: Capture all current positions
     const allItems = document.querySelectorAll('[data-intersortable-item-id]');
     const beforePositions = new Map<HTMLElement, DOMRect>();
@@ -329,17 +296,11 @@ class Intersortable {
       beforePositions.set(item as HTMLElement, item.getBoundingClientRect());
     });
     
-    // LAST: Make the DOM changes
-    if (isGhostReplacement) {
-      // Replace ghost with original item
-      targetParent.replaceChild(this.dragState.originalItem!, insertionPoint as Node);
+    // LAST: Make the DOM changes - always insert, never replace
+    if (insertionPoint) {
+      targetParent.insertBefore(this.dragState.originalItem!, insertionPoint);
     } else {
-      // Insert original item at new position
-      if (insertionPoint) {
-        targetParent.insertBefore(this.dragState.originalItem!, insertionPoint);
-      } else {
-        targetParent.appendChild(this.dragState.originalItem!);
-      }
+      targetParent.appendChild(this.dragState.originalItem!);
     }
     
     // INVERT: Calculate differences and animate
@@ -378,80 +339,24 @@ class Intersortable {
   }
 
 
+
   private recreateTargetingSystem() {
-    // Store current nearest item to restore targeting after recreation
-    const currentNearestItem = this.dragState.nearestItem;
-    
-    // Clean up existing markers
-    this.dragState.targetingMarkers.forEach(marker => {
-      if (marker.parentNode) {
-        document.body.removeChild(marker);
-      }
-    });
-    this.dragState.targetingMarkers = [];
-    
-    // Recreate all markers
+    // Recreate ghosts for empty containers
     const allContainers = document.querySelectorAll('[data-intersortable-container-id]') as NodeListOf<HTMLElement>;
     
     allContainers.forEach(container => {
       const items = container.querySelectorAll('[data-intersortable-item-id]');
       
       if (items.length === 0) {
-        // Empty container - create ghost item and target it
+        // Empty container - create ghost item
         const ghostItem = this.createGhostItem();
         container.appendChild(ghostItem);
         this.dragState.ghostItems.push(ghostItem);
-        
-        const marker = this.createTargetingMarker(ghostItem, 'item');
-        this.dragState.targetingMarkers.push(marker);
-        document.body.appendChild(marker);
-      } else {
-        // Container has items - target each item
-        items.forEach(item => {
-          const marker = this.createTargetingMarker(item as HTMLElement, 'item');
-          this.dragState.targetingMarkers.push(marker);
-          document.body.appendChild(marker);
-        });
-      }
-    });
-    
-    // Restore targeting state immediately
-    if (currentNearestItem) {
-      this.dragState.nearestItem = currentNearestItem;
-      this.highlightNearestTarget();
-    }
-  }
-
-  private highlightNearestTarget() {
-    if (!this.dragState.nearestItem) return;
-
-    // Clear all previous active states
-    this.dragState.targetingMarkers.forEach(marker => {
-      marker.classList.remove('intersortable-targeting-active');
-    });
-
-    // Find and highlight the marker for the current nearest item
-    const targetItemId = this.dragState.nearestItem.getAttribute('data-intersortable-item-id');
-    const targetContainerId = this.dragState.nearestItem.getAttribute('data-intersortable-container-id');
-
-    this.dragState.targetingMarkers.forEach(marker => {
-      const markerItemId = marker.getAttribute('data-target-item-id');
-      const markerContainerId = marker.getAttribute('data-target-container-id');
-      
-      if ((targetItemId && markerItemId === targetItemId) || 
-          (targetContainerId && markerContainerId === targetContainerId)) {
-        marker.classList.add('intersortable-targeting-active');
       }
     });
   }
 
   private cleanupTargetingSystem() {
-    this.dragState.targetingMarkers.forEach(marker => {
-      if (marker.parentNode) {
-        document.body.removeChild(marker);
-      }
-    });
-    this.dragState.targetingMarkers = [];
     this.dragState.nearestItem = null;
     this.dragState.lastTargetedElement = null;
   }
@@ -464,15 +369,36 @@ class Intersortable {
     });
     this.dragState.ghostItems = [];
   }
-}
 
-// Auto-initialize when the DOM is ready
-if (typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => new Intersortable());
-  } else {
-    new Intersortable();
+  private getCurrentState(): ContainerState {
+    const state: ContainerState = {};
+    const containers = document.querySelectorAll('[data-intersortable-container-id]') as NodeListOf<HTMLElement>;
+    
+    containers.forEach(container => {
+      const containerId = container.getAttribute('data-intersortable-container-id')!;
+      const items = container.querySelectorAll('[data-intersortable-item-id]') as NodeListOf<HTMLElement>;
+      
+      // Filter out ghost items by checking if they have ghost IDs or are in our ghost items array
+      const realItems = Array.from(items).filter(item => {
+        const itemId = item.getAttribute('data-intersortable-item-id') || '';
+        const isGhost = itemId.startsWith('ghost-') || this.dragState.ghostItems.includes(item);
+        return !isGhost;
+      });
+      
+      state[containerId] = realItems.map(item => {
+        return item.textContent || item.getAttribute('data-intersortable-item-id') || '';
+      });
+    });
+    
+    return state;
+  }
+
+  // Static method to initialize with callbacks
+  static init(callbacks?: IntersortableCallbacks): Intersortable {
+    return new Intersortable(callbacks);
   }
 }
 
+// Export for manual initialization
 export default Intersortable;
+export type { IntersortableCallbacks, ContainerState };
