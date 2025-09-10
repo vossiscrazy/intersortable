@@ -1,470 +1,315 @@
-// intersortable.ts - Novel approach to sortable lists between containers
-// Global state
-let isDragging = false;
-let draggedElement = null;
-let draggedHandle = null;
-let clonedElement = null;
-const dragHandleOffset = { x: 0, y: 0 };
-let draggedItemCenter = { x: 0, y: 0 };
-let targetedItem = null;
-let insertionPosition = 'above';
-let lastTargetedItem = null;
-let lastInsertionPosition = 'above';
-// Configuration
-let config = {};
-// MutationObserver for detecting new items
-let mutationObserver = null;
-// Helper functions
-function calculateDistance(point1, point2) {
-    return Math.sqrt(Math.pow(point1.x - point2.x, 2) + Math.pow(point1.y - point2.y, 2));
-}
-function getElementCenter(element) {
-    const rect = element.getBoundingClientRect();
-    return { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 };
-}
-function setupClone(clone, item, mouseX, mouseY, handleOffset) {
-    clone.removeAttribute('data-intersortable-item');
-    // Add class for CSS targeting
-    clone.classList.add('intersortable-clone');
-    clone.setAttribute('data-intersortable-state', 'clone');
-    // Base positioning and sizing (always needed)
-    clone.style.position = 'fixed';
-    clone.style.pointerEvents = 'none';
-    clone.style.left = (mouseX - handleOffset.x) + 'px';
-    clone.style.top = (mouseY - handleOffset.y) + 'px';
-    clone.style.width = item.offsetWidth + 'px';
-    clone.style.height = item.offsetHeight + 'px';
-    // Customizable styles using CSS custom properties
-    clone.style.zIndex = 'var(--intersortable-clone-z-index, 9999)';
-    clone.style.opacity = 'var(--intersortable-clone-opacity, 1)';
-    clone.style.transform = 'scale(var(--intersortable-clone-scale, 1.05))';
-    clone.style.boxShadow = 'var(--intersortable-clone-shadow, 0 10px 25px rgba(0, 0, 0, 0.3))';
-    clone.style.transition = 'var(--intersortable-clone-transition, none)';
-}
-function resetDragState() {
-    isDragging = false;
-    document.body.style.cursor = 'var(--intersortable-cursor-default, auto)';
-    targetedItem = null;
-    lastTargetedItem = null;
-    lastInsertionPosition = 'above';
-    // Clean up any transition styles left on items and restore pointer events
-    const allItems = document.querySelectorAll('[data-intersortable-item]');
-    allItems.forEach(item => {
-        // Remove dragging classes and attributes
-        item.classList.remove('intersortable-dragging');
-        item.removeAttribute('data-intersortable-state');
-        // Restore pointer events
-        item.style.pointerEvents = '';
-        // Also restore pointer events on drag handles
-        const handles = item.querySelectorAll('[data-drag-handle]');
-        handles.forEach(handle => {
-            handle.style.pointerEvents = '';
-        });
-        setTimeout(() => {
-            item.style.transition = '';
-            item.style.transform = '';
-        }, parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--intersortable-animation-duration') || '250')); // Use CSS custom property or default
-    });
-}
-// Function to move an item to the insertion point with smooth animations
-function moveItemToInsertionPoint(itemToMove, targetItem, position) {
-    // Store original container before DOM manipulation for onMove callback
-    const originalFromContainer = (config.getContainerId || defaultGetContainerId)(itemToMove);
-    const targetToContainer = targetItem.hasAttribute('data-intersortable-container')
-        ? (config.getContainerId || defaultGetContainerId)(targetItem)
-        : (config.getContainerId || defaultGetContainerId)(targetItem.closest('[data-intersortable-container]') || targetItem);
-    // Call onDOMStart callback before any DOM manipulation
-    if (config.onDOMStart) {
-        const itemId = (config.getItemId || defaultGetItemId)(itemToMove);
-        config.onDOMStart({ itemId, fromContainer: originalFromContainer, toContainer: targetToContainer });
-    }
-    // FLIP technique: First - capture current positions of all affected items
-    const affectedItems = [];
-    // Find all sortable items that might be affected by this move
-    const allItems = document.querySelectorAll('[data-intersortable-item]');
-    allItems.forEach(item => {
-        if (item !== itemToMove) { // Don't track the dragged item itself
-            affectedItems.push({
-                element: item,
-                rect: item.getBoundingClientRect()
-            });
+// intersortable.ts - Clean slate rework
+class Intersortable {
+    constructor(callbacks) {
+        this.dragState = {
+            isDragging: false,
+            originalItem: null,
+            cloneItem: null,
+            startX: 0,
+            startY: 0,
+            nearestItem: null,
+            lastTargetedElement: null,
+            ghostItems: [],
+            animatingElements: new Set()
+        };
+        this.callbacks = {};
+        if (callbacks) {
+            this.callbacks = callbacks;
         }
-    });
-    // Capture the moving item's current position
-    const movingItemRect = itemToMove.getBoundingClientRect();
-    // Remove the item from its current position
-    if (itemToMove.parentNode) {
-        itemToMove.parentNode.removeChild(itemToMove);
+        this.init();
     }
-    // Check if target is an empty container (data-intersortable-container attribute)
-    if (targetItem.hasAttribute('data-intersortable-container')) {
-        // Empty container - just append the item to it
-        targetItem.appendChild(itemToMove);
+    init() {
+        document.addEventListener('mousedown', this.handleMouseDown.bind(this));
+        document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+        document.addEventListener('mouseup', this.handleMouseUp.bind(this));
     }
-    else {
-        // Normal item-to-item insertion
-        const targetParent = targetItem.parentNode;
-        if (!targetParent)
+    handleMouseDown(event) {
+        const target = event.target;
+        const item = target.closest('[data-intersortable-item-id]');
+        if (!item)
             return;
-        // Insert directly relative to the target item
-        if (position === 'above') {
-            targetParent.insertBefore(itemToMove, targetItem);
+        event.preventDefault();
+        this.dragState.isDragging = true;
+        this.dragState.originalItem = item;
+        this.dragState.startX = event.clientX;
+        this.dragState.startY = event.clientY;
+        // Set original item to 40% opacity
+        item.style.opacity = '0.4';
+        // Create clone
+        this.createClone(item, event.clientX, event.clientY);
+        // Initialize targeting system
+        this.initializeTargetingSystem();
+        // Trigger onPickup callback
+        if (this.callbacks.onPickup) {
+            this.callbacks.onPickup(this.getCurrentState());
         }
-        else {
-            // Insert after the target item
-            const nextSibling = targetItem.nextSibling;
-            if (nextSibling) {
-                targetParent.insertBefore(itemToMove, nextSibling);
+    }
+    createClone(originalItem, x, y) {
+        const clone = originalItem.cloneNode(true);
+        const rect = originalItem.getBoundingClientRect();
+        // Style the clone
+        clone.style.position = 'fixed';
+        clone.style.left = `${rect.left}px`;
+        clone.style.top = `${rect.top}px`;
+        clone.style.width = `${rect.width}px`;
+        clone.style.height = `${rect.height}px`;
+        clone.style.transform = 'scale(1.05)';
+        clone.style.transformOrigin = 'center';
+        clone.style.pointerEvents = 'none';
+        clone.style.zIndex = '1000';
+        clone.style.opacity = '1';
+        // Add style hook class
+        clone.classList.add('intersortable-drag-clone');
+        // Remove the data attribute to avoid conflicts
+        clone.removeAttribute('data-intersortable-item-id');
+        document.body.appendChild(clone);
+        this.dragState.cloneItem = clone;
+    }
+    handleMouseMove(event) {
+        if (!this.dragState.isDragging || !this.dragState.cloneItem)
+            return;
+        const deltaX = event.clientX - this.dragState.startX;
+        const deltaY = event.clientY - this.dragState.startY;
+        // Keep clone attached to cursor based on initial position
+        const rect = this.dragState.cloneItem.getBoundingClientRect();
+        const initialLeft = parseFloat(this.dragState.cloneItem.style.left);
+        const initialTop = parseFloat(this.dragState.cloneItem.style.top);
+        this.dragState.cloneItem.style.left = `${initialLeft + deltaX}px`;
+        this.dragState.cloneItem.style.top = `${initialTop + deltaY}px`;
+        // Update start position for next movement calculation
+        this.dragState.startX = event.clientX;
+        this.dragState.startY = event.clientY;
+        // Update targeting system
+        this.updateTargetingSystem();
+    }
+    handleMouseUp(event) {
+        if (!this.dragState.isDragging)
+            return;
+        // Restore original item opacity
+        if (this.dragState.originalItem) {
+            this.dragState.originalItem.style.opacity = '';
+        }
+        // Remove clone
+        if (this.dragState.cloneItem) {
+            document.body.removeChild(this.dragState.cloneItem);
+        }
+        // Clean up targeting system
+        this.cleanupTargetingSystem();
+        // Clean up ghost items
+        this.cleanupGhostItems();
+        // Trigger onDrop callback
+        if (this.callbacks.onDrop) {
+            this.callbacks.onDrop(this.getCurrentState());
+        }
+        // Reset drag state
+        this.dragState = {
+            isDragging: false,
+            originalItem: null,
+            cloneItem: null,
+            startX: 0,
+            startY: 0,
+            nearestItem: null,
+            lastTargetedElement: null,
+            ghostItems: [],
+            animatingElements: new Set()
+        };
+    }
+    initializeTargetingSystem() {
+        // Get all intersortable containers
+        const allContainers = document.querySelectorAll('[data-intersortable-container-id]');
+        allContainers.forEach(container => {
+            const items = container.querySelectorAll('[data-intersortable-item-id]');
+            if (items.length === 0) {
+                // Empty container - create ghost item
+                const ghostItem = this.createGhostItem();
+                container.appendChild(ghostItem);
+                this.dragState.ghostItems.push(ghostItem);
             }
-            else {
-                targetParent.appendChild(itemToMove);
-            }
-        }
-    }
-    // Call onDOMComplete callback after DOM manipulation is complete
-    if (config.onDOMComplete) {
-        const allContainers = getCurrentSortOrder();
-        config.onDOMComplete(allContainers);
-    }
-    // Call onMove callback for real-time React state updates
-    if (config.onMove) {
-        const itemId = (config.getItemId || defaultGetItemId)(itemToMove);
-        const allContainers = getCurrentSortOrder();
-        const newIndex = allContainers[targetToContainer]?.indexOf(itemId) ?? -1;
-        config.onMove({
-            itemId,
-            fromContainer: originalFromContainer, // Where it came from (stored before DOM manipulation)
-            toContainer: targetToContainer, // Where it went to (calculated before DOM manipulation)
-            newIndex,
-            allContainers
         });
+        this.updateTargetingSystem();
     }
-    // FLIP technique: Last - get new positions, Invert - calculate differences, Play - animate
-    const newMovingItemRect = itemToMove.getBoundingClientRect();
-    // Animate the moving item from its old position to new position
-    const deltaX = movingItemRect.left - newMovingItemRect.left;
-    const deltaY = movingItemRect.top - newMovingItemRect.top;
-    if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
-        itemToMove.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-        itemToMove.style.transition = 'none';
-        requestAnimationFrame(() => {
-            const duration = getComputedStyle(document.documentElement).getPropertyValue('--intersortable-animation-duration') || '0.2s';
-            const easing = getComputedStyle(document.documentElement).getPropertyValue('--intersortable-animation-easing') || 'ease-out';
-            itemToMove.style.transition = `transform ${duration} ${easing}`;
-            itemToMove.style.transform = 'translate(0, 0)';
-        });
+    createGhostItem() {
+        // Create a simple ghost item
+        const ghost = document.createElement('div');
+        ghost.className = 'bg-neutral-700 rounded px-3 py-2 text-neutral-300 text-sm';
+        ghost.setAttribute('data-intersortable-item-id', `ghost-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`);
+        ghost.textContent = '👻 Drop here';
+        ghost.style.opacity = '0';
+        ghost.style.pointerEvents = 'none';
+        return ghost;
     }
-    // Animate displaced items
-    affectedItems.forEach(({ element, rect }) => {
-        const newRect = element.getBoundingClientRect();
-        const deltaX = rect.left - newRect.left;
-        const deltaY = rect.top - newRect.top;
-        if (Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1) {
-            element.style.transform = `translate(${deltaX}px, ${deltaY}px)`;
-            element.style.transition = 'none';
-            requestAnimationFrame(() => {
-                const duration = getComputedStyle(document.documentElement).getPropertyValue('--intersortable-displaced-duration') || '0.15s';
-                const easing = getComputedStyle(document.documentElement).getPropertyValue('--intersortable-animation-easing') || 'ease-out';
-                element.style.transition = `transform ${duration} ${easing}`;
-                element.style.transform = 'translate(0, 0)';
-            });
-        }
-    });
-}
-// Calculate targeting for real-time item movement
-function calculateTargeting() {
-    // Calculate dragged item center position
-    if (clonedElement) {
-        draggedItemCenter = getElementCenter(clonedElement);
-    }
-    // Find all sortable items and calculate distances
-    const allItems = document.querySelectorAll('[data-intersortable-item]');
-    let nearestTarget = null;
-    let nearestDistance = Infinity;
-    // Check all sortable items
-    allItems.forEach(item => {
-        const itemCenter = getElementCenter(item);
-        const distance = calculateDistance(itemCenter, draggedItemCenter);
-        if (distance < nearestDistance) {
-            nearestDistance = distance;
-            nearestTarget = item;
-        }
-    });
-    // Also check empty containers
-    const containers = document.querySelectorAll('[data-intersortable-container]');
-    containers.forEach(container => {
-        const sortableItems = container.querySelectorAll('[data-intersortable-item]');
-        if (sortableItems.length === 0) { // Empty container
-            const containerCenter = getElementCenter(container);
-            const distance = calculateDistance(containerCenter, draggedItemCenter);
+    updateTargetingSystem() {
+        if (!this.dragState.cloneItem)
+            return;
+        const cloneRect = this.dragState.cloneItem.getBoundingClientRect();
+        const cloneCenterX = cloneRect.left + cloneRect.width / 2;
+        const cloneCenterY = cloneRect.top + cloneRect.height / 2;
+        let nearestDistance = Infinity;
+        let nearestElement = null;
+        // Get all targetable elements (items and ghosts)
+        const allItems = document.querySelectorAll('[data-intersortable-item-id]');
+        // Find nearest element by calculating distances
+        allItems.forEach(item => {
+            const itemRect = item.getBoundingClientRect();
+            const itemCenterX = itemRect.left + itemRect.width / 2;
+            const itemCenterY = itemRect.top + itemRect.height / 2;
+            const distance = Math.sqrt(Math.pow(cloneCenterX - itemCenterX, 2) +
+                Math.pow(cloneCenterY - itemCenterY, 2));
             if (distance < nearestDistance) {
                 nearestDistance = distance;
-                nearestTarget = container;
+                nearestElement = item;
             }
+        });
+        // Update nearest item and move original item
+        if (nearestElement) {
+            this.dragState.nearestItem = nearestElement;
+            this.moveOriginalItem();
         }
-    });
-    const nearestItem = nearestTarget;
-    targetedItem = nearestItem;
-    // Calculate insertion position based on dragged item center vs nearest item center
-    if (nearestItem) {
-        if (nearestItem === draggedElement) {
-            // Targeting self - no change needed
-            insertionPosition = 'above';
+    }
+    moveOriginalItem() {
+        if (!this.dragState.originalItem || !this.dragState.nearestItem || !this.dragState.cloneItem)
+            return;
+        const nearestElement = this.dragState.nearestItem;
+        const originalItem = this.dragState.originalItem;
+        // Check if nearest element is a ghost item
+        const isGhost = nearestElement.getAttribute('data-intersortable-item-id')?.startsWith('ghost-');
+        let needsRecreate = false;
+        let targetParent = null;
+        let insertionPoint = null;
+        if (isGhost) {
+            // Insert original item above the ghost (always before)
+            const ghostParent = nearestElement.parentNode;
+            if (ghostParent && originalItem.parentNode !== ghostParent) {
+                targetParent = ghostParent;
+                insertionPoint = nearestElement; // Always insert before the ghost
+                needsRecreate = true;
+            }
         }
         else {
-            const targetCenter = getElementCenter(nearestItem);
-            insertionPosition = draggedItemCenter.y <= targetCenter.y ? 'above' : 'below';
-        }
-    }
-    // Move the original dragged element to the insertion point in real-time
-    // Only move if the target or position has changed
-    if (nearestItem && draggedElement && nearestItem !== draggedElement) {
-        if (nearestItem !== lastTargetedItem || insertionPosition !== lastInsertionPosition) {
-            moveItemToInsertionPoint(draggedElement, nearestItem, insertionPosition);
-            lastTargetedItem = nearestItem;
-            lastInsertionPosition = insertionPosition;
-        }
-    }
-}
-// Default helper functions
-function defaultGetItemId(element) {
-    return element.dataset.itemId || element.id || '';
-}
-function defaultGetContainerId(element) {
-    const container = element.closest('[data-intersortable-container]');
-    return container?.dataset.containerId || container?.id || '';
-}
-// Helper function to get current sort order
-function getCurrentSortOrder() {
-    const containers = document.querySelectorAll('[data-intersortable-container]');
-    const sortOrder = {};
-    containers.forEach(container => {
-        const containerId = (config.getContainerId || defaultGetContainerId)(container);
-        if (containerId) {
-            const items = container.querySelectorAll('[data-intersortable-item]');
-            sortOrder[containerId] = Array.from(items).map(item => (config.getItemId || defaultGetItemId)(item)).filter(id => id); // Filter out empty IDs
-        }
-    });
-    return sortOrder;
-}
-function applyCursorStyles() {
-    // Apply default grab cursor to all intersortable items
-    const items = document.querySelectorAll('[data-intersortable-item]');
-    items.forEach(item => {
-        applyCursorStyleToItem(item);
-    });
-}
-function applyCursorStyleToItem(item) {
-    // Check if item has a drag handle
-    const hasHandle = item.querySelector('[data-drag-handle]');
-    if (hasHandle) {
-        // Item has handle - only the handle should be grabbable
-        const handles = item.querySelectorAll('[data-drag-handle]');
-        handles.forEach(handle => {
-            if (!handle.style.cursor) {
-                handle.style.cursor = 'var(--intersortable-cursor-grab, grab)';
-            }
-        });
-    }
-    else {
-        // No handle - entire item is grabbable
-        if (!item.style.cursor) {
-            item.style.cursor = 'var(--intersortable-cursor-grab, grab)';
-        }
-    }
-}
-function handleMutations(mutations) {
-    mutations.forEach(mutation => {
-        // Handle added nodes
-        mutation.addedNodes.forEach(node => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-                const element = node;
-                // Check if the added node is an intersortable item
-                if (element.hasAttribute('data-intersortable-item')) {
-                    applyCursorStyleToItem(element);
+            // Move above or below the targeted item (normal behavior)
+            const cloneRect = this.dragState.cloneItem.getBoundingClientRect();
+            const targetRect = nearestElement.getBoundingClientRect();
+            const cloneCenterY = cloneRect.top + cloneRect.height / 2;
+            const targetCenterY = targetRect.top + targetRect.height / 2;
+            if (cloneCenterY < targetCenterY) {
+                // Clone is above target - insert before
+                if (originalItem.nextElementSibling !== nearestElement) {
+                    targetParent = nearestElement.parentNode;
+                    insertionPoint = nearestElement;
+                    needsRecreate = true;
                 }
-                // Check if the added node contains intersortable items
-                const items = element.querySelectorAll('[data-intersortable-item]');
-                items.forEach(item => {
-                    applyCursorStyleToItem(item);
-                });
-                // Check if the added node is a drag handle
-                if (element.hasAttribute('data-drag-handle')) {
-                    if (!element.style.cursor) {
-                        element.style.cursor = 'var(--intersortable-cursor-grab, grab)';
-                    }
+            }
+            else {
+                // Clone is below target - insert after
+                if (originalItem.previousElementSibling !== nearestElement) {
+                    targetParent = nearestElement.parentNode;
+                    insertionPoint = nearestElement.nextSibling;
+                    needsRecreate = true;
                 }
-                // Check if the added node contains drag handles
-                const handles = element.querySelectorAll('[data-drag-handle]');
-                handles.forEach(handle => {
-                    if (!handle.style.cursor) {
-                        handle.style.cursor = 'var(--intersortable-cursor-grab, grab)';
-                    }
-                });
+            }
+        }
+        // Perform FLIP animation if we need to move
+        if (needsRecreate && targetParent && insertionPoint !== undefined) {
+            this.performFLIPAnimation(targetParent, insertionPoint);
+        }
+        // Only recreate targeting system if DOM structure actually changed
+        if (needsRecreate) {
+            this.recreateTargetingSystem();
+        }
+    }
+    performFLIPAnimation(targetParent, insertionPoint) {
+        // FIRST: Capture all current positions
+        const allItems = document.querySelectorAll('[data-intersortable-item-id]');
+        const beforePositions = new Map();
+        allItems.forEach(item => {
+            beforePositions.set(item, item.getBoundingClientRect());
+        });
+        // LAST: Make the DOM changes - always insert, never replace
+        if (insertionPoint) {
+            targetParent.insertBefore(this.dragState.originalItem, insertionPoint);
+        }
+        else {
+            targetParent.appendChild(this.dragState.originalItem);
+        }
+        // INVERT: Calculate differences and animate
+        allItems.forEach(item => {
+            const beforeRect = beforePositions.get(item);
+            if (!beforeRect)
+                return;
+            const afterRect = item.getBoundingClientRect();
+            const deltaX = beforeRect.left - afterRect.left;
+            const deltaY = beforeRect.top - afterRect.top;
+            // Only animate if there's a meaningful change
+            if (Math.abs(deltaX) > 0.5 || Math.abs(deltaY) > 0.5) {
+                this.animateElement(item, deltaX, deltaY);
             }
         });
-    });
-}
-function setupMutationObserver() {
-    // Clean up existing observer if any
-    if (mutationObserver) {
-        mutationObserver.disconnect();
     }
-    // Create new observer
-    mutationObserver = new MutationObserver(handleMutations);
-    // Start observing the document for changes
-    mutationObserver.observe(document.body, {
-        childList: true,
-        subtree: true
-    });
-}
-function cleanupMutationObserver() {
-    if (mutationObserver) {
-        mutationObserver.disconnect();
-        mutationObserver = null;
+    animateElement(element, deltaX, deltaY) {
+        // Mark element as animating
+        this.dragState.animatingElements.add(element);
+        // PLAY: Animate from old position to new position
+        const animation = element.animate([
+            { transform: `translate(${deltaX}px, ${deltaY}px)` },
+            { transform: 'translate(0, 0)' }
+        ], {
+            duration: 300,
+            easing: 'ease-out'
+        });
+        // Remove from animating set when done
+        animation.addEventListener('finish', () => {
+            this.dragState.animatingElements.delete(element);
+        });
     }
-}
-export function initSortable(userConfig = {}) {
-    config = { ...userConfig };
-    // Apply default cursor styles to intersortable items
-    applyCursorStyles();
-    // Set up MutationObserver to watch for new items
-    setupMutationObserver();
-    document.addEventListener('mousedown', handleMouseDown);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-}
-function handleMouseDown(e) {
-    const target = e.target;
-    let dragHandle = null;
-    let item = null;
-    // First, check if clicked element is or contains a drag handle
-    if (target.closest('[data-drag-handle]')) {
-        dragHandle = target.closest('[data-drag-handle]');
-        item = dragHandle.closest('[data-intersortable-item]');
-    }
-    else {
-        // No drag handle found, check if we clicked directly on a sortable item
-        item = target.closest('[data-intersortable-item]');
-        if (item) {
-            // Check if this item has a drag handle - if so, ignore clicks outside the handle
-            const hasHandle = item.querySelector('[data-drag-handle]');
-            if (hasHandle) {
-                return; // Item has a handle but we didn't click on it, so don't start drag
-            }
-            // No handle exists, so the entire item is draggable
-            dragHandle = item;
-        }
-    }
-    if (item && dragHandle) {
-        isDragging = true;
-        draggedElement = item;
-        draggedHandle = dragHandle;
-        // Call onDragStart callback
-        if (config.onDragStart) {
-            const itemId = (config.getItemId || defaultGetItemId)(item);
-            config.onDragStart({ itemId, element: item });
-        }
-        // Reset tracking variables for real-time movement
-        lastTargetedItem = null;
-        lastInsertionPosition = 'above';
-        // Calculate drag handle offset - always preserve click position
-        const itemRect = item.getBoundingClientRect();
-        dragHandleOffset.x = e.clientX - itemRect.left;
-        dragHandleOffset.y = e.clientY - itemRect.top;
-        // Create clone
-        clonedElement = item.cloneNode(true);
-        setupClone(clonedElement, item, e.clientX, e.clientY, dragHandleOffset);
-        document.body.appendChild(clonedElement);
-        // Calculate initial targeting
-        calculateTargeting();
-        // Add dragging state
-        item.classList.add('intersortable-dragging');
-        item.setAttribute('data-intersortable-state', 'dragging');
-        // Apply dragging styles with CSS custom properties
-        item.style.opacity = 'var(--intersortable-dragging-opacity, 0.4)';
-        // Set cursor to grabbing on body and the specific draggable element
-        document.body.style.cursor = 'var(--intersortable-cursor-grabbing, grabbing)';
-        dragHandle.style.cursor = 'var(--intersortable-cursor-grabbing, grabbing)';
-        // Disable pointer events on all other intersortable items to prevent cursor conflicts
-        const allItems = document.querySelectorAll('[data-intersortable-item]');
-        allItems.forEach(otherItem => {
-            if (otherItem !== item) {
-                otherItem.style.pointerEvents = 'none';
-                // Also disable pointer events on their drag handles
-                const otherHandles = otherItem.querySelectorAll('[data-drag-handle]');
-                otherHandles.forEach(handle => {
-                    handle.style.pointerEvents = 'none';
-                });
+    recreateTargetingSystem() {
+        // Recreate ghosts for empty containers
+        const allContainers = document.querySelectorAll('[data-intersortable-container-id]');
+        allContainers.forEach(container => {
+            const items = container.querySelectorAll('[data-intersortable-item-id]');
+            if (items.length === 0) {
+                // Empty container - create ghost item
+                const ghostItem = this.createGhostItem();
+                container.appendChild(ghostItem);
+                this.dragState.ghostItems.push(ghostItem);
             }
         });
-        e.preventDefault();
     }
-}
-function handleMouseMove(e) {
-    if (isDragging && clonedElement) {
-        // Move clone so drag handle follows cursor
-        const cloneX = e.clientX - dragHandleOffset.x;
-        const cloneY = e.clientY - dragHandleOffset.y;
-        clonedElement.style.left = cloneX + 'px';
-        clonedElement.style.top = cloneY + 'px';
-        // Update targeting calculations
-        calculateTargeting();
+    cleanupTargetingSystem() {
+        this.dragState.nearestItem = null;
+        this.dragState.lastTargetedElement = null;
     }
-}
-function handleMouseUp(_e) {
-    if (isDragging) {
-        // Call onDragEnd callback before cleanup
-        if (config.onDragEnd) {
-            config.onDragEnd();
-        }
-        // Cleanup
-        if (clonedElement) {
-            clonedElement.classList.remove('intersortable-clone');
-            clonedElement.removeAttribute('data-intersortable-state');
-            document.body.removeChild(clonedElement);
-            clonedElement = null;
-        }
-        if (draggedElement) {
-            draggedElement.style.opacity = '1';
-            draggedElement.classList.remove('intersortable-dragging');
-            draggedElement.removeAttribute('data-intersortable-state');
-            draggedElement = null;
-        }
-        if (draggedHandle) {
-            // Reset cursor on the specific handle that was dragged
-            draggedHandle.style.cursor = 'var(--intersortable-cursor-grab, grab)';
-            draggedHandle = null;
-        }
-        resetDragState();
-    }
-}
-export function restoreSortOrder(savedOrder) {
-    Object.entries(savedOrder).forEach(([containerId, itemIds]) => {
-        const container = document.querySelector(`[data-container-id="${containerId}"], #${containerId}`);
-        if (!container)
-            return;
-        // Create a map of current items by their IDs for quick lookup
-        const currentItems = new Map();
-        const items = container.querySelectorAll('[data-intersortable-item]');
-        items.forEach(item => {
-            const itemId = (config.getItemId || defaultGetItemId)(item);
-            if (itemId)
-                currentItems.set(itemId, item);
-        });
-        // Reorder items according to saved order
-        itemIds.forEach(itemId => {
-            const item = currentItems.get(itemId);
-            if (item) {
-                container.appendChild(item); // This moves the item to the end
+    cleanupGhostItems() {
+        this.dragState.ghostItems.forEach(ghost => {
+            if (ghost.parentNode) {
+                ghost.parentNode.removeChild(ghost);
             }
         });
-    });
+        this.dragState.ghostItems = [];
+    }
+    getCurrentState() {
+        const state = {};
+        const containers = document.querySelectorAll('[data-intersortable-container-id]');
+        containers.forEach(container => {
+            const containerId = container.getAttribute('data-intersortable-container-id');
+            const items = container.querySelectorAll('[data-intersortable-item-id]');
+            // Filter out ghost items by checking if they have ghost IDs or are in our ghost items array
+            const realItems = Array.from(items).filter(item => {
+                const itemId = item.getAttribute('data-intersortable-item-id') || '';
+                const isGhost = itemId.startsWith('ghost-') || this.dragState.ghostItems.includes(item);
+                return !isGhost;
+            });
+            state[containerId] = realItems.map((item, index) => ({
+                id: item.getAttribute('data-intersortable-item-id') || '',
+                text: item.textContent || '',
+                position: index
+            }));
+        });
+        return state;
+    }
+    // Static method to initialize with callbacks
+    static init(callbacks) {
+        return new Intersortable(callbacks);
+    }
 }
-export function cleanupSortable() {
-    document.removeEventListener('mousedown', handleMouseDown);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
-    // Clean up MutationObserver
-    cleanupMutationObserver();
-}
+// Export for manual initialization
+export default Intersortable;

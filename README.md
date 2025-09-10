@@ -1,21 +1,26 @@
 # Intersortable
 
-Zero-config sortable items between multiple containers. Lightweight drag-and-drop for Next.js and React with automatic state persistence.
+Zero-config sortable items between multiple containers with smooth animations. Lightweight drag-and-drop for Next.js and React with real-time DOM manipulation.
 
 ## Why Intersortable?
 
-The biggest mistake you can make when building sortable lists is choosing a library built for every possible use case instead of **your specific need**: moving items between containers. Most developers waste weeks configuring complex solutions when they simply need to drag tasks between Kanban columns or sort items across multiple lists.
+Most drag-and-drop libraries are built for complex use cases that require extensive configuration. **Intersortable** focuses on the most common need: moving items between containers with smooth animations and real-time feedback.
 
-**Intersortable** was designed by developers who understand that your users don't care about your implementation—they care about results.
+**What makes it different:**
+- Items move in real-time during drag (not just on drop)
+- Smooth FLIP animations for all affected elements
+- Ghost items automatically appear in empty containers
+- Callback-based state management that works perfectly with React
 
 ## Features
 
 - 🚀 **Zero Configuration** - Two HTML attributes and you're done
-- 📦 **Lightweight** - 7.4kb minified, zero dependencies
-- ⚡ **Performance First** - Built for Next.js Server Components and React 18+
+- 📦 **Lightweight** - 5.6kb minified, zero dependencies  
+- ⚡ **Real-time Movement** - Items move during drag, not just on drop
 - 🎯 **TypeScript Ready** - Full type definitions included
 - 📱 **Mobile Friendly** - Works smoothly on touch devices
-- 💾 **State Persistence** - Built-in support for localStorage, databases, or any storage
+- 🎨 **FLIP Animations** - Smooth transitions for all affected elements
+- 👻 **Smart Empty States** - Ghost items automatically appear in empty containers
 
 ## Installation
 
@@ -29,227 +34,297 @@ npm install intersortable
 
 ```html
 <!-- Your containers -->
-<div data-intersortable-container data-container-id="list-a">
-  <div data-intersortable-item data-item-id="item-1">
-    <span>Drag me anywhere</span>
-  </div>
-  <div data-intersortable-item data-item-id="item-2">
-    <span>Or just this handle</span>
-    <div data-drag-handle>⋮⋮</div>
-  </div>
+<div data-intersortable-container-id="todo">
+  <div data-intersortable-item-id="task-1">Build awesome app</div>
+  <div data-intersortable-item-id="task-2">Deploy to production</div>
 </div>
 
-<div data-intersortable-container data-container-id="list-b">
-  <!-- Items can be moved between containers -->
+<div data-intersortable-container-id="done">
+  <div data-intersortable-item-id="task-3">Write documentation</div>
 </div>
+
+<!-- Empty containers automatically show ghost items when dragging -->
+<div data-intersortable-container-id="archive"></div>
 ```
 
-### 2. Initialize in Your Component
+### 2. Initialize in Your React Component
 
 ```tsx
 'use client'
 
-import { useEffect } from 'react'
-import { initSortable, cleanupSortable } from 'intersortable'
+import { useEffect, useState } from 'react'
+import Intersortable, { type ContainerState } from 'intersortable'
 
-export default function MyComponent() {
+export default function TaskBoard() {
+  const [currentState, setCurrentState] = useState<ContainerState | null>(null)
+
   useEffect(() => {
-    initSortable({
-      onDragStart: ({ itemId, element }) => {
-        console.log(`Started dragging ${itemId}`)
-        // Update UI state for drag start
+    const intersortable = new Intersortable({
+      onPickup: (state) => {
+        console.log('Started dragging, current state:', state)
+        // Optional: Update UI to show drag started
       },
-      onMove: ({ itemId, fromContainer, toContainer, newIndex, allContainers }) => {
-        console.log(`Moved ${itemId} from ${fromContainer} to ${toContainer}`)
-        // Real-time React state updates during drag
-        localStorage.setItem('sortOrder', JSON.stringify(allContainers))
-      },
-      onDOMComplete: (allContainers) => {
-        console.log('DOM updated:', allContainers)
-        // Perfect for triggering React re-renders
-      },
-      onDragEnd: () => {
-        console.log('Drag ended')
-        // Cleanup, reset UI state
+      onDrop: (state) => {
+        console.log('Finished dragging, new state:', state)
+        setCurrentState(state)
+        
+        // Save to your backend, localStorage, etc.
+        localStorage.setItem('taskState', JSON.stringify(state))
+        // Or: await saveToAPI(state)
       }
     })
-    
-    return () => cleanupSortable()
+
+    // Cleanup on unmount
+    return () => {
+      // Cleanup happens automatically when the instance is garbage collected
+    }
   }, [])
 
   return (
-    // Your JSX with data-intersortable attributes
+    <div className="grid grid-cols-3 gap-4">
+      <div data-intersortable-container-id="todo" className="p-4 bg-gray-100 rounded">
+        <h3>Todo</h3>
+        <div data-intersortable-item-id="task-1" className="p-2 bg-white rounded mb-2">
+          Build awesome app
+        </div>
+        <div data-intersortable-item-id="task-2" className="p-2 bg-white rounded">
+          Deploy to production
+        </div>
+      </div>
+      
+      <div data-intersortable-container-id="done" className="p-4 bg-gray-100 rounded">
+        <h3>Done</h3>
+        <div data-intersortable-item-id="task-3" className="p-2 bg-white rounded">
+          Write documentation
+        </div>
+      </div>
+      
+      <div data-intersortable-container-id="archive" className="p-4 bg-gray-100 rounded">
+        <h3>Archive</h3>
+        {/* Ghost items appear automatically when dragging over empty containers */}
+      </div>
+    </div>
   )
 }
 ```
 
-## CSS Customization
+## CSS Styling
 
-Intersortable uses CSS custom properties and classes for easy styling customization. No JavaScript configuration needed!
-
-### CSS Custom Properties
-
-Override these variables in your CSS to customize the appearance:
+Add these styles for the best experience:
 
 ```css
-:root {
-  /* Clone appearance */
-  --intersortable-clone-scale: 1.08;
-  --intersortable-clone-opacity: 0.95;
-  --intersortable-clone-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
-  --intersortable-clone-z-index: 10000;
-  
-  /* Dragged item opacity */
-  --intersortable-dragging-opacity: 0.4;
-  
-  /* Animation timing */
-  --intersortable-animation-duration: 0.25s;
-  --intersortable-animation-easing: ease-out;
-  --intersortable-displaced-duration: 0.2s;
-  
-  /* Cursors */
-  --intersortable-cursor-grabbing: grabbing;
-  --intersortable-cursor-default: auto;
-}
-```
-
-### CSS Classes
-
-Style elements directly using these classes:
-
-```css
-/* Style the clone while dragging */
-.intersortable-clone {
-  border: 2px solid #007acc;
-  border-radius: 8px;
-  backdrop-filter: blur(4px);
+/* Draggable items show grab cursor */
+[data-intersortable-item-id]:hover {
+  cursor: grab;
 }
 
-/* Style the original item while dragging */
-.intersortable-dragging {
-  transform: rotate(-1deg);
-  filter: brightness(0.8);
+[data-intersortable-item-id]:active {
+  cursor: grabbing;
 }
 
-/* Target by state attribute */
-[data-intersortable-state="clone"] {
-  /* Clone-specific styles */
-}
-
-[data-intersortable-state="dragging"] {
-  /* Dragging-specific styles */
-}
-```
-
-### Per-Container Styling
-
-Since CSS custom properties inherit, you can set different styles per container:
-
-```css
-.container-a {
-  --intersortable-clone-scale: 1.1;
-  --intersortable-clone-shadow: 0 0 20px rgba(255, 0, 0, 0.4);
-}
-
-.container-b {
-  --intersortable-clone-scale: 1.05;
-  --intersortable-clone-shadow: 0 0 20px rgba(0, 255, 0, 0.4);
+/* Optional: Style the drag clone */
+.intersortable-drag-clone {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+  transform: scale(1.05);
 }
 ```
 
 ## API Reference
 
-### `initSortable(config)`
+### `new Intersortable(callbacks?)`
 
-Initialize the sortable functionality.
+Creates a new intersortable instance.
 
-**Config Options:**
-- `onDragStart?`: Called when drag begins - perfect for UI state, logging
-- `onMove?`: Called every time item moves during drag - essential for React state updates
-- `onDOMStart?`: Called right before DOM manipulation - last chance for validation
-- `onDOMComplete?`: Called immediately after DOM is updated - perfect for persistence
-- `onDragEnd?`: Called when drag ends - cleanup, reset UI
-- `getItemId?`: Custom function to extract item IDs
-- `getContainerId?`: Custom function to extract container IDs
+**Parameters:**
+- `callbacks` (optional): Object with callback functions
 
-### `restoreSortOrder(savedOrder)`
+**Callback Options:**
+- `onPickup?: (state: ContainerState) => void` - Called when drag starts
+- `onDrop?: (state: ContainerState) => void` - Called when drag ends
 
-Restore items to previously saved positions.
-
+**Example:**
 ```tsx
-// Restore from localStorage
-const savedOrder = JSON.parse(localStorage.getItem('sortOrder') || '{}')
-restoreSortOrder(savedOrder)
-```
-
-### `cleanupSortable()`
-
-Remove event listeners when component unmounts.
-
-## HTML Attributes
-
-### Required Attributes
-
-- `data-intersortable-container` - Marks containers that can hold sortable items
-- `data-container-id="unique-id"` - Unique identifier for each container
-- `data-intersortable-item` - Marks items that can be dragged
-- `data-item-id="unique-id"` - Unique identifier for each item
-
-### Optional Attributes
-
-- `data-drag-handle` - Restricts dragging to specific elements within an item
-
-## Advanced Usage
-
-### Custom ID Functions
-
-```tsx
-initSortable({
-  getItemId: (element) => element.dataset.customItemId || '',
-  getContainerId: (element) => element.dataset.customContainerId || '',
-  onDragStart: ({ itemId, element }) => {
-    // Track drag start, update UI state
+const intersortable = new Intersortable({
+  onPickup: (state) => {
+    // Drag started - perfect for UI updates
+    console.log('Current state when drag started:', state)
   },
-  onMove: ({ itemId, fromContainer, toContainer, newIndex, allContainers }) => {
-    // Real-time updates for responsive UIs
-    updateReactState(allContainers)
-  },
-  onDOMComplete: (allContainers) => {
-    // Persist after DOM changes are complete
-    saveToDatabase(allContainers)
+  onDrop: (state) => {
+    // Drag ended - perfect for persistence
+    console.log('Final state after drop:', state)
+    saveToBackend(state)
   }
 })
 ```
 
-### State Persistence
+### `ContainerState` Type
+
+The state object passed to callbacks provides complete information for database persistence:
 
 ```tsx
-// Real-time persistence during drag
-onMove: ({ allContainers }) => {
-  fetch('/api/save-order', {
-    method: 'POST',
-    body: JSON.stringify(allContainers)
-  })
+interface ItemInfo {
+  id: string;        // The data-intersortable-item-id attribute
+  text: string;      // The visible text content of the item
+  position: number;  // Zero-based position within the container
 }
 
-// Persist after DOM manipulation is complete
-onDOMComplete: (allContainers) => {
-  localStorage.setItem('sortOrder', JSON.stringify(allContainers))
+type ContainerState = {
+  [containerId: string]: ItemInfo[]
 }
 
-// Or batch saves at the end
-onDragEnd: () => {
-  const finalState = getCurrentSortOrder()
-  saveToPersistentStorage(finalState)
+// Example state:
+{
+  "todo": [
+    { id: "task-1", text: "Build awesome app", position: 0 },
+    { id: "task-2", text: "Deploy to production", position: 1 }
+  ],
+  "done": [
+    { id: "task-3", text: "Write documentation", position: 0 }
+  ],
+  "archive": []
 }
 ```
 
+### `Intersortable.init(callbacks?)`
+
+Static method for one-line initialization:
+
+```tsx
+import Intersortable from 'intersortable'
+
+// One-line setup
+Intersortable.init({
+  onDrop: (state) => localStorage.setItem('tasks', JSON.stringify(state))
+})
+```
+
+## HTML Attributes
+
+### Required
+
+- `data-intersortable-container-id="unique-id"` - Marks containers that hold sortable items
+- `data-intersortable-item-id="unique-id"` - Marks items that can be dragged between containers
+
+### Important Notes
+
+- Container and item IDs should be unique within the page
+- Items can be moved between any containers on the page
+- Empty containers automatically show ghost items during drag operations
+- Ghost items are invisible but provide targeting for empty containers
+
+## Advanced Usage
+
+### Persistence with React State
+
+```tsx
+function TaskBoard() {
+  const [tasks, setTasks] = useState<ContainerState>({
+    todo: [
+      { id: 'task-1', text: 'Task 1', position: 0 },
+      { id: 'task-2', text: 'Task 2', position: 1 }
+    ],
+    done: [
+      { id: 'task-3', text: 'Task 3', position: 0 }
+    ],
+    archive: []
+  })
+
+  useEffect(() => {
+    new Intersortable({
+      onDrop: (state) => {
+        setTasks(state)  // Update React state
+        saveToAPI(state) // Persist to backend
+      }
+    })
+  }, [])
+
+  // Render your UI based on tasks state
+  return (
+    <div>
+      {Object.entries(tasks).map(([containerId, items]) => (
+        <div key={containerId} data-intersortable-container-id={containerId}>
+          <h3>{containerId}</h3>
+          {items.map((item) => (
+            <div key={item.id} data-intersortable-item-id={item.id}>
+              {item.text}
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+```
+
+### Database Integration
+
+With the rich state information, you can easily persist to any database:
+
+```tsx
+new Intersortable({
+  onDrop: async (state) => {
+    try {
+      // You have access to item IDs, positions, and container assignments
+      for (const [containerId, items] of Object.entries(state)) {
+        for (const item of items) {
+          await updateTaskInDB({
+            id: item.id,           // Database record ID
+            container: containerId, // New container assignment  
+            position: item.position // New position in container
+          })
+        }
+      }
+      console.log('Saved successfully')
+    } catch (error) {
+      console.error('Failed to save:', error)
+    }
+  }
+})
+```
+
+**Or batch update all at once:**
+
+```tsx
+new Intersortable({
+  onDrop: async (state) => {
+    const updates = []
+    
+    for (const [containerId, items] of Object.entries(state)) {
+      items.forEach(item => {
+        updates.push({
+          id: item.id,
+          container: containerId,
+          position: item.position,
+          // You can also access item.text if needed
+        })
+      })
+    }
+    
+    await fetch('/api/tasks/bulk-update', {
+      method: 'POST',
+      body: JSON.stringify({ updates })
+    })
+  }
+})
+```
+
+## How It Works
+
+1. **Real-time Movement**: Unlike other libraries, items move immediately during drag using FLIP animations
+2. **Ghost Items**: Empty containers automatically get invisible ghost items that serve as drop targets
+3. **FLIP Animations**: All affected elements smoothly animate to their new positions
+4. **Callback-based**: Simple callbacks for pickup/drop events instead of complex event systems
+
 ## Browser Support
 
-- Chrome 60+
+- Chrome 60+ (Web Animations API)
 - Firefox 55+
 - Safari 12+
 - Edge 79+
+
+## Examples
+
+Check out the [live demo](https://intersortable.dev) to see it in action.
 
 ## Contributing
 
@@ -261,4 +336,4 @@ MIT © Austin Voss
 
 ---
 
-**Stop wasting time on complex implementations. Your users deserve software that simply works.**
+**Built for developers who need drag-and-drop that just works.**

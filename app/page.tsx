@@ -65,7 +65,8 @@ export default function Home() {
                         <div className="space-y-1">
                           {items.map((item, index) => (
                             <div key={index} className="text-xs text-neutral-300 bg-neutral-700 px-2 py-1 rounded">
-                              {item}
+                              <span className="font-medium">{item.text}</span>
+                              <span className="text-neutral-500 ml-2">#{item.id}</span>
                             </div>
                           ))}
                         </div>
@@ -92,7 +93,8 @@ export default function Home() {
                         <div className="space-y-1">
                           {items.map((item, index) => (
                             <div key={index} className="text-xs text-neutral-300 bg-neutral-700 px-2 py-1 rounded">
-                              {item}
+                              <span className="font-medium">{item.text}</span>
+                              <span className="text-neutral-500 ml-2">#{item.id}</span>
                             </div>
                           ))}
                         </div>

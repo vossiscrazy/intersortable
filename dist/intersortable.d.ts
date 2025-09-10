@@ -1,25 +1,35 @@
-export interface IntersortableConfig {
-    onDragStart?: (data: {
-        itemId: string;
-        element: HTMLElement;
-    }) => void;
-    onMove?: (data: {
-        itemId: string;
-        fromContainer: string;
-        toContainer: string;
-        newIndex: number;
-        allContainers: Record<string, string[]>;
-    }) => void;
-    onDOMStart?: (data: {
-        itemId: string;
-        fromContainer: string;
-        toContainer: string;
-    }) => void;
-    onDOMComplete?: (allContainers: Record<string, string[]>) => void;
-    onDragEnd?: () => void;
-    getItemId?: (element: HTMLElement) => string;
-    getContainerId?: (element: HTMLElement) => string;
+interface IntersortableCallbacks {
+    onPickup?: (state: ContainerState) => void;
+    onDrop?: (state: ContainerState) => void;
 }
-export declare function initSortable(userConfig?: IntersortableConfig): void;
-export declare function restoreSortOrder(savedOrder: Record<string, string[]>): void;
-export declare function cleanupSortable(): void;
+interface ItemInfo {
+    id: string;
+    text: string;
+    position: number;
+}
+interface ContainerState {
+    [containerId: string]: ItemInfo[];
+}
+declare class Intersortable {
+    private dragState;
+    private callbacks;
+    constructor(callbacks?: IntersortableCallbacks);
+    private init;
+    private handleMouseDown;
+    private createClone;
+    private handleMouseMove;
+    private handleMouseUp;
+    private initializeTargetingSystem;
+    private createGhostItem;
+    private updateTargetingSystem;
+    private moveOriginalItem;
+    private performFLIPAnimation;
+    private animateElement;
+    private recreateTargetingSystem;
+    private cleanupTargetingSystem;
+    private cleanupGhostItems;
+    private getCurrentState;
+    static init(callbacks?: IntersortableCallbacks): Intersortable;
+}
+export default Intersortable;
+export type { IntersortableCallbacks, ContainerState, ItemInfo };

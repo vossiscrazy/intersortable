@@ -17,8 +17,14 @@ interface IntersortableCallbacks {
   onDrop?: (state: ContainerState) => void;
 }
 
+interface ItemInfo {
+  id: string;
+  text: string;
+  position: number;
+}
+
 interface ContainerState {
-  [containerId: string]: string[];
+  [containerId: string]: ItemInfo[];
 }
 
 class Intersortable {
@@ -385,9 +391,11 @@ class Intersortable {
         return !isGhost;
       });
       
-      state[containerId] = realItems.map(item => {
-        return item.textContent || item.getAttribute('data-intersortable-item-id') || '';
-      });
+      state[containerId] = realItems.map((item, index) => ({
+        id: item.getAttribute('data-intersortable-item-id') || '',
+        text: item.textContent || '',
+        position: index
+      }));
     });
     
     return state;
@@ -401,4 +409,4 @@ class Intersortable {
 
 // Export for manual initialization
 export default Intersortable;
-export type { IntersortableCallbacks, ContainerState };
+export type { IntersortableCallbacks, ContainerState, ItemInfo };
