@@ -1,6 +1,6 @@
 {
   "name": "intersortable",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Zero-config sortable items between multiple containers with real-time movement and smooth FLIP animations",
   "keywords": [
     "react",
