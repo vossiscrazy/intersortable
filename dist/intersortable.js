@@ -19,20 +19,65 @@ class Intersortable {
         this.init();
     }
     init() {
+        this.injectStyles();
         document.addEventListener('mousedown', this.handleMouseDown.bind(this));
         document.addEventListener('mousemove', this.handleMouseMove.bind(this));
         document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+    }
+    injectStyles() {
+        // Check if styles are already injected
+        if (document.getElementById('intersortable-styles')) {
+            return;
+        }
+        const styleElement = document.createElement('style');
+        styleElement.id = 'intersortable-styles';
+        styleElement.textContent = `
+      /* Default cursor styles for intersortable items */
+      [data-intersortable-item-id]:hover {
+        cursor: grab !important;
+      }
+
+      /* When item has a drag handle, remove cursor from entire item */
+      [data-intersortable-item-id]:has([data-intersortable-drag-handle]):hover {
+        cursor: default !important;
+      }
+
+      /* Drag handle specific cursor states */
+      [data-intersortable-drag-handle]:hover {
+        cursor: grab !important;
+      }
+
+      /* Force grabbing cursor everywhere during drag */
+      body.intersortable-dragging,
+      body.intersortable-dragging *,
+      body.intersortable-dragging [data-intersortable-item-id]:hover,
+      body.intersortable-dragging [data-intersortable-drag-handle]:hover {
+        cursor: grabbing !important;
+      }
+    `;
+        document.head.appendChild(styleElement);
     }
     handleMouseDown(event) {
         const target = event.target;
         const item = target.closest('[data-intersortable-item-id]');
         if (!item)
             return;
+        // Check if item has a drag handle
+        const dragHandle = item.querySelector('[data-intersortable-drag-handle]');
+        if (dragHandle) {
+            // If drag handle exists, only allow dragging from the handle
+            const clickedHandle = target.closest('[data-intersortable-drag-handle]');
+            if (!clickedHandle)
+                return; // Clicked outside handle, don't start drag
+        }
+        // If no drag handle, entire item is draggable (existing behavior)
         event.preventDefault();
         this.dragState.isDragging = true;
         this.dragState.originalItem = item;
         this.dragState.startX = event.clientX;
         this.dragState.startY = event.clientY;
+        // Set grabbing cursor for entire document while dragging
+        document.body.classList.add('intersortable-dragging');
         // Set original item to 40% opacity
         item.style.opacity = '0.4';
         // Create clone
@@ -85,6 +130,8 @@ class Intersortable {
     handleMouseUp(event) {
         if (!this.dragState.isDragging)
             return;
+        // Reset cursor to default
+        document.body.classList.remove('intersortable-dragging');
         // Restore original item opacity
         if (this.dragState.originalItem) {
             this.dragState.originalItem.style.opacity = '';

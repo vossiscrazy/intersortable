@@ -34,14 +34,20 @@ export default function Home() {
           <div className="bg-neutral-900 rounded-lg p-6 min-h-32 flex flex-col gap-3" data-intersortable-container-id="watch">
             <h2 className="text-lg font-semibold text-neutral-300 mb-2">Watch</h2>
             <div className="bg-neutral-800 rounded px-4 py-3 text-neutral-200 text-sm" data-intersortable-item-id="task-1">Build AGI lab</div>
-            <div className="bg-neutral-800 rounded px-4 py-3 text-neutral-200 text-sm" data-intersortable-item-id="task-2">Ship fusion reactor</div>
+            <div className="bg-neutral-800 rounded px-4 py-3 text-neutral-200 text-sm flex items-center justify-between" data-intersortable-item-id="task-2">
+              <span>Ship fusion reactor</span>
+              <img src="/icons/drag-handle.svg" alt="Drag handle" className="w-4 h-4 text-neutral-500" data-intersortable-drag-handle />
+            </div>
             <div className="bg-neutral-800 rounded px-4 py-3 text-neutral-200 text-sm" data-intersortable-item-id="task-3">Launch Mars mission</div>
             <div className="bg-neutral-800 rounded px-4 py-3 text-neutral-200 text-sm" data-intersortable-item-id="task-4">Build quantum computer</div>
           </div>
           <div className="bg-neutral-900 rounded-lg p-6 min-h-32 flex flex-col gap-3" data-intersortable-container-id="todo">
             <h2 className="text-lg font-semibold text-neutral-300 mb-2">Todo</h2>
             <div className="bg-neutral-800 rounded px-4 py-3 text-neutral-200 text-sm" data-intersortable-item-id="task-5">Scale compute cluster</div>
-            <div className="bg-neutral-800 rounded px-4 py-3 text-neutral-200 text-sm" data-intersortable-item-id="task-6">Optimize energy grid</div>
+            <div className="bg-neutral-800 rounded px-4 py-3 text-neutral-200 text-sm flex items-center justify-between" data-intersortable-item-id="task-6">
+              <span>Optimize energy grid</span>
+              <img src="/icons/drag-handle.svg" alt="Drag handle" className="w-4 h-4 text-neutral-500" data-intersortable-drag-handle />
+            </div>
           </div>
           <div className="bg-neutral-900 rounded-lg p-6 min-h-32 flex flex-col gap-3" data-intersortable-container-id="later">
             <h2 className="text-lg font-semibold text-neutral-300 mb-2">Later</h2>

@@ -32,17 +32,29 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
-[data-intersortable-item-id]:hover {
-  cursor: grab;
-}
+/* Default cursor styles for intersortable items */
+/* [data-intersortable-item-id]:hover {
+  cursor: grab !important;
+} */
 
-[data-intersortable-item-id]:active {
-  cursor: grabbing;
-}
+/* When item has a drag handle, remove cursor from entire item */
+/* [data-intersortable-item-id]:has([data-intersortable-drag-handle]):hover {
+  cursor: default !important;
+} */
 
-.intersortable-drag-clone {
+/* Drag handle specific cursor states */
+/* [data-intersortable-drag-handle]:hover {
+  cursor: grab !important;
+} */
+
+/* Force grabbing cursor everywhere during drag */
+/* body.intersortable-dragging * {
+  cursor: grabbing !important;
+} */
+
+/* .intersortable-drag-clone {
   @apply shadow-sm;
-}
+} */
 
 
 

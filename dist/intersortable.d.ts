@@ -15,6 +15,7 @@ declare class Intersortable {
     private callbacks;
     constructor(callbacks?: IntersortableCallbacks);
     private init;
+    private injectStyles;
     private handleMouseDown;
     private createClone;
     private handleMouseMove;

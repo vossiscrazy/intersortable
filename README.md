@@ -15,12 +15,13 @@ Most drag-and-drop libraries are built for complex use cases that require extens
 ## Features
 
 - 🚀 **Zero Configuration** - Two HTML attributes and you're done
-- 📦 **Lightweight** - 5.6kb minified, zero dependencies  
+- 📦 **Lightweight** - 6.8kb minified, zero dependencies  
 - ⚡ **Real-time Movement** - Items move during drag, not just on drop
 - 🎯 **TypeScript Ready** - Full type definitions included
 - 📱 **Mobile Friendly** - Works smoothly on touch devices
 - 🎨 **FLIP Animations** - Smooth transitions for all affected elements
 - 👻 **Smart Empty States** - Ghost items automatically appear in empty containers
+- 🎛️ **Drag Handle Support** - Optional drag handles for precise control
 
 ## Installation
 
@@ -36,7 +37,11 @@ npm install intersortable
 <!-- Your containers -->
 <div data-intersortable-container-id="todo">
   <div data-intersortable-item-id="task-1">Build awesome app</div>
-  <div data-intersortable-item-id="task-2">Deploy to production</div>
+  <div data-intersortable-item-id="task-2">
+    <span>Deploy to production</span>
+    <!-- Optional: Add drag handle for precise control -->
+    <img src="/drag-handle.svg" data-intersortable-drag-handle />
+  </div>
 </div>
 
 <div data-intersortable-container-id="done">
@@ -108,26 +113,31 @@ export default function TaskBoard() {
 }
 ```
 
-## CSS Styling
+## Drag Handles (Optional)
 
-Add these styles for the best experience:
+For precise control, you can add drag handles to items. When a drag handle is present, only the handle will be draggable:
 
-```css
-/* Draggable items show grab cursor */
-[data-intersortable-item-id]:hover {
-  cursor: grab;
-}
-
-[data-intersortable-item-id]:active {
-  cursor: grabbing;
-}
-
-/* Optional: Style the drag clone */
-.intersortable-drag-clone {
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-  transform: scale(1.05);
-}
+```html
+<div data-intersortable-item-id="task-1">
+  <span>Task content here</span>
+  <!-- Only this handle will be draggable -->
+  <button data-intersortable-drag-handle>⋮⋮</button>
+</div>
 ```
+
+**Drag Handle Behavior:**
+- Items **without** handles: Entire item is draggable
+- Items **with** handles: Only the handle element is draggable
+- Automatic cursor management: `grab` on hover, `grabbing` during drag
+
+## Built-in Styling
+
+Intersortable includes all necessary styles out-of-the-box:
+- Automatic cursor management (`grab` → `grabbing`)
+- Drag handle detection and cursor override
+- Clone styling with subtle shadow and scale
+
+No CSS required! The library is completely self-contained.
 
 ## API Reference
 
@@ -205,12 +215,17 @@ Intersortable.init({
 - `data-intersortable-container-id="unique-id"` - Marks containers that hold sortable items
 - `data-intersortable-item-id="unique-id"` - Marks items that can be dragged between containers
 
+### Optional
+
+- `data-intersortable-drag-handle` - When present, only this element will be draggable (instead of the entire item)
+
 ### Important Notes
 
 - Container and item IDs should be unique within the page
 - Items can be moved between any containers on the page
 - Empty containers automatically show ghost items during drag operations
 - Ghost items are invisible but provide targeting for empty containers
+- Drag handles provide precise control - useful for items with interactive content like buttons or links
 
 ## Advanced Usage
 
@@ -324,7 +339,7 @@ new Intersortable({
 
 ## Examples
 
-Check out the [live demo](https://intersortable.dev) to see it in action.
+Check out the included demo by running `npm run dev` to see it in action.
 
 ## Contributing
 
